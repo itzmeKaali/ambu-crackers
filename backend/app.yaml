@@ -1,0 +1,12 @@
+runtime: python310
+service: api
+entrypoint: gunicorn -b :$PORT main:app
+env_variables:
+  FIREBASE_PROJECT_ID: "ambu-crackers"
+  ORDERS_BUCKET: "oders-bucket"
+  PRODUCTS_BUCKET: "crackers-bucket"
+  SENDGRID_API_KEY: ""
+  ADMIN_EMAIL: "murugadeva99@gmail.com"
+  FROM_EMAIL: "murugadeva99@gmail.com"
+  PRICE_LIST_BLOB: "price-list/ambucrackers-price-list.pdf"
+  FRONTEND_ORIGIN: "http://localhost:5173"

@@ -1,0 +1,11 @@
+flask
+flask-cors
+firebase-admin
+google-cloud-firestore
+google-cloud-storage
+reportlab
+sendgrid
+gunicorn
+python-dotenv
+google-cloud-secret-manager
+
