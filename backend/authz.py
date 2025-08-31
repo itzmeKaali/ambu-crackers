@@ -40,7 +40,9 @@ def get_user_from_request():
             doc = db.collection("roles").document(uid).get()
             is_admin = bool(doc.to_dict().get("admin")) if doc.exists else False
         return {"uid": uid, "email": decoded.get("email"), "admin": is_admin}
-    except Exception:
+    except Exception as err:
+        print('&&&&&&&&&&&&&&')
+        print(str(err))
         return None
 
 def require_admin(fn):

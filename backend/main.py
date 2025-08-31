@@ -58,6 +58,7 @@ def enquiry():
 @app.get("/api/me")
 @require_admin
 def me():
+    print('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
     u = get_user_from_request()
     return jsonify(u or {}), (200 if u else 401)
 
