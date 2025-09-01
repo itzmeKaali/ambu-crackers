@@ -1,5 +1,5 @@
 runtime: nodejs20
-service: web
+service: client
 handlers:
   - url: /(.*)
     static_files: dist/\1

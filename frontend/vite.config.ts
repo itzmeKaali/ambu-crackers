@@ -10,7 +10,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: "https://keen-snow-470010-a7.el.r.appspot.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "/api"),
       },

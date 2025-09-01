@@ -1,5 +1,5 @@
 runtime: python310
-service: api
+service: default
 entrypoint: gunicorn -b :$PORT main:app
 env_variables:
   FIREBASE_PROJECT_ID: "ambu-crackers"
