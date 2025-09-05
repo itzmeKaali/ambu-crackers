@@ -10,9 +10,12 @@ import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
 import Footer from "./components/Footer/footer";
 import Header from "./components/header/header";
+import DisclaimerWrapper from "./pages/alertmessage";
 
 function App() {
-  return (  
+
+
+  return (
     <BrowserRouter>
       <FireworksCursor />
       <div className="flex flex-col min-h-screen">
@@ -20,22 +23,24 @@ function App() {
         <Header />
 
         {/* Main Content */}
-        <main className="flex-1 flex justify-center items-start px-4 mt-[80px] py-6">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/quick-checkout" element={<QuickCheckout />} />
-            <Route path="/price-list" element={<PriceList />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/admin" element={<Admin />} />
+        <main className="flex-1 flex justify-center items-start px-xs-4 mt-[80px] ">
+          <DisclaimerWrapper>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/shop" element={<Shop />} />
+              <Route path="/quick-checkout" element={<QuickCheckout />} />
+              <Route path="/price-list" element={<PriceList />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/admin" element={<Admin />} />
+            </Routes>
+          </DisclaimerWrapper>
 
-          </Routes>
         </main>
 
         {/* Footer */}
         <Footer />
       </div>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 

@@ -1,9 +1,15 @@
 runtime: nodejs20
 service: client
+
 handlers:
-  - url: /(.*)
+  - url: /(.*\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))
     static_files: dist/\1
-    upload: dist/(.*)
-  - url: /
+    upload: dist/.*\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)
+    secure: always
+    expiration: "1h"
+
+  # Catch-all for SPA routes
+  - url: /.*
     static_files: dist/index.html
     upload: dist/index.html
+    secure: always

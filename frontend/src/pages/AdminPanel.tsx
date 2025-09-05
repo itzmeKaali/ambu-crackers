@@ -19,6 +19,7 @@ function ProductForm({ token, products, setProducts }: any) {
   const [form, setForm] = useState<Partial<Product>>({ is_active: true });
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -42,15 +43,24 @@ function ProductForm({ token, products, setProducts }: any) {
     return meta.public_url as string;
   }
 
+  function validateForm() {
+    const newErrors: { [key: string]: string } = {};
+    if (!form.name?.trim()) newErrors.name = "Product name is required.";
+    if (form.mrp === undefined || form.mrp < 0)
+      newErrors.mrp = "MRP must be a valid non-negative number.";
+    if (form.price === undefined || form.price < 0)
+      newErrors.price = "Price must be a valid non-negative number.";
+    if (!form.category?.trim()) newErrors.category = "Category cannot be empty.";
+    return newErrors;
+  }
+
   async function saveProduct() {
+    const validationErrors = validateForm();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
+
     const image_url = await uploadImage();
     const { name, mrp, price, category, is_active, description } = form;
-
-    if (!name?.trim()) return alert("Product name is required.");
-    if (mrp === undefined || mrp < 0 || price === undefined || price < 0)
-      return alert("Price and MRP must be valid non-negative numbers.");
-    if (!category?.trim()) return alert("Category cannot be empty.");
-
     const payload = { name, mrp, price, category, is_active, description, image_url };
     const newProduct = await j("/api/admin/products", "POST", payload, token);
 
@@ -58,6 +68,7 @@ function ProductForm({ token, products, setProducts }: any) {
     setForm({ is_active: true });
     setFile(null);
     setPreview(null);
+    setErrors({});
   }
 
   return (
@@ -71,45 +82,62 @@ function ProductForm({ token, products, setProducts }: any) {
           saveProduct();
         }}
       >
+        <label htmlFor="product-name" className="font-medium text-gray-700">Product Name</label>
         <input
-          className="rounded-lg border border-red-300 px-4 py-2 shadow focus:ring-2 focus:ring-red-400"
+          id="product-name"
+          className={`rounded-lg border px-4 py-2 shadow focus:ring-2 focus:ring-red-400 ${errors.name ? 'border-red-500' : 'border-red-300'}`}
           placeholder="Product Name"
           value={form.name || ""}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
         />
+        {errors.name && <span className="text-red-500 text-sm mt-1">{errors.name}</span>}
+
+        <label htmlFor="product-description" className="font-medium text-gray-700">Description</label>
         <textarea
+          id="product-description"
           className="rounded-lg border border-red-300 px-4 py-2 shadow min-h-[80px]"
           placeholder="Description"
           value={form.description || ""}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
+
+        <label htmlFor="product-category" className="font-medium text-gray-700">Category</label>
         <input
-          className="rounded-lg border border-red-300 px-4 py-2 shadow"
+          id="product-category"
+          className={`rounded-lg border px-4 py-2 shadow ${errors.category ? 'border-red-500' : 'border-red-300'}`}
           placeholder="Category"
           value={form.category || ""}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
         />
+        {errors.category && <span className="text-red-500 text-sm mt-1">{errors.category}</span>}
 
         <div className="grid grid-cols-2 gap-4">
-          <input
-            type="number"
-            placeholder="MRP"
-            value={form.mrp || 0}
-            onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) })}
-            min={0}
-            step={0.01}
-            className="rounded-lg border border-red-300 px-4 py-2 shadow"
-          />
-          <input
-            type="number"
-            placeholder="Price"
-            value={form.price || 0}
-            onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) })}
-            min={0}
-            step={0.01}
-            className="rounded-lg border border-red-300 px-4 py-2 shadow"
-          />
+          <div className="flex flex-col">
+            <label htmlFor="product-mrp" className="font-medium text-gray-700">MRP</label>
+            <input
+              id="product-mrp"
+              type="number"
+              placeholder="MRP"
+              value={form.mrp || 0}
+              onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) })}
+              className={`rounded-lg border px-4 py-2 shadow ${errors.mrp ? 'border-red-500' : 'border-red-300'}`}
+            />
+            {errors.mrp && <span className="text-red-500 text-sm mt-1">{errors.mrp}</span>}
+          </div>
+          <div className="flex flex-col">
+            <label htmlFor="product-price" className="font-medium text-gray-700">Price</label>
+            <input
+              id="product-price"
+              type="number"
+              placeholder="Price"
+              value={form.price || 0}
+              onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) })}
+              min={0}
+              step={0.01}
+              className={`rounded-lg border px-4 py-2 shadow ${errors.price ? 'border-red-500' : 'border-red-300'}`}
+            />
+            {errors.price && <span className="text-red-500 text-sm mt-1">{errors.price}</span>}
+          </div>
         </div>
 
         <label className="flex items-center gap-2 font-medium text-red-600">

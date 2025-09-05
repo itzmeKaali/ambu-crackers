@@ -16,10 +16,13 @@ const Header = () => {
   const location = useLocation();
 
   return (
-    <header className="w-full fixed top-0 left-0 z-50 bg-white shadow-lg backdrop-blur-md">
+    <header className="w-full fixed top-0 left-0 z-50 border-b border-white/20 bg-white/40 backdrop-blur-lg">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
         {/* Logo */}
-        <Link to="/" className=" font-stretch-semi-expanded bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent text-3xl" >
+        <Link
+          to="/"
+          className="font-semibold bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 bg-clip-text text-transparent text-3xl tracking-wide"
+        >
           AmbuCrackers
         </Link>
 
@@ -29,9 +32,12 @@ const Header = () => {
             <Link
               key={link.name}
               to={link.path}
-              className={`text-gray-700 hover:text-orange-500  font-medium transition ${
-                location.pathname === link.path ? "text-blue-600 underline underline-offset-4" : ""
-              }`}
+              className={`relative font-medium transition-all duration-300 
+                ${
+                  location.pathname === link.path
+                    ? "bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 bg-clip-text text-transparent after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full after:bg-gradient-to-r after:from-red-500 after:to-orange-400"
+                    : "bg-gradient-to-r from-gray-700 via-gray-600 to-gray-800 bg-clip-text text-transparent hover:from-red-500 hover:via-orange-400 hover:to-yellow-400"
+                }`}
             >
               {link.name}
             </Link>
@@ -42,14 +48,23 @@ const Header = () => {
         <div className="md:hidden flex items-center">
           <button
             onClick={() => setMobileOpen((prev) => !prev)}
-            className="p-2 rounded-md text-gray-700 hover:text-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="p-2 rounded-md text-gray-800 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-400"
           >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d={mobileOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
+                d={
+                  mobileOpen
+                    ? "M6 18L18 6M6 6l12 12"
+                    : "M4 6h16M4 12h16M4 18h16"
+                }
               />
             </svg>
           </button>
@@ -63,7 +78,7 @@ const Header = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="md:hidden bg-white shadow-lg w-full"
+            className="md:hidden bg-white/70 backdrop-blur-md border-t border-white/20 shadow-lg w-full"
           >
             <div className="flex flex-col px-4 py-4 space-y-2">
               {navLinks.map((link) => (
@@ -71,9 +86,12 @@ const Header = () => {
                   key={link.name}
                   to={link.path}
                   onClick={() => setMobileOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 transition ${
-                    location.pathname === link.path ? "text-blue-600 font-semibold" : ""
-                  }`}
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-all duration-300 
+                    ${
+                      location.pathname === link.path
+                        ? "bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 bg-clip-text text-transparent font-semibold"
+                        : "bg-gradient-to-r from-gray-700 via-gray-600 to-gray-800 bg-clip-text text-transparent hover:from-red-500 hover:via-orange-400 hover:to-yellow-400"
+                    }`}
                 >
                   {link.name}
                 </Link>
