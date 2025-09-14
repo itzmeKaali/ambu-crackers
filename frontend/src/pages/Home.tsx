@@ -7,13 +7,18 @@ import { ShieldCheck, Truck, CreditCard, Sparkles, BadgePercent, Headphones } fr
 // import img2 from "../assets/home/home-2.jpg";
 // import img3 from "../assets/home/home-3.jpg";
 import homese from "../assets/home/home-se.jpg";
-import explore from '../assets/home/panner.jpg'
+import explore from "../assets/home/one.jpg"
 
 // trending collections images
-import Wheel from "../assets/home/trending collections/Chakri (Wheel).jpg";
-import bijili from "../assets/home/trending collections/bijili.jpg";
-import rocket from "../assets/home/trending collections/Rocket.jpg";
-import autobomb from "../assets/home/trending collections/auto-boumb.jpg";
+// import Wheel from "../assets/home/trending collections/Chakri (Wheel).jpg";
+// import bijili from "../assets/home/trending collections/bijili.jpg";
+// import rocket from "../assets/home/trending collections/Rocket.jpg";
+// import autobomb from "../assets/home/trending collections/auto-boumb.jpg";
+
+import CHAKKAR from '../assets/home/trending collections/GROUND CHAKKAR CRACKERS.webp'
+import Anar from '../assets/home/trending collections/anar.jpg'
+import SKYSHOT from '../assets/home/trending collections/SKY-SHOTS.webp'
+import Flowerpot from '../assets/home/trending collections/flower-pot1.webp'
 
 // offer image 
 import Offer1 from '../assets/home/offer-images/combo-offer.jpg';
@@ -25,8 +30,8 @@ const sliderImages = [Offer30, Newone, Offer1, combooffer];
 
 
 const highlights = [
-  "🔥 Festival Discounts up to 60% OFF",
-  "🚚 Free Delivery above ₹5,000",
+  "🔥 Festival Discounts up to 80% OFFER",
+  // "🚚 Free Delivery above ₹5,000",
   "🎇 Premium Sivakasi Crackers",
   "⚡ 24/7 Customer Support",
   "💳 UPI · Cards · COD",
@@ -216,7 +221,7 @@ export default function HomePro() {
           <Link to="/shop" className="text-red-600 font-semibold hover:underline">View all</Link>
         </div>
         <div className="mt-6 grid gap-4 sm:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {[bijili, autobomb, rocket, Wheel].map((src, i) => (
+          {[SKYSHOT, Anar,CHAKKAR , Flowerpot].map((src, i) => (
             <div key={i} className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
               <img src={src} alt={`Collection ${i + 1}`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition" />
