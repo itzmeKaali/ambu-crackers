@@ -3,6 +3,10 @@ import { g } from "../api";
 import type { Product } from "../types";
 import Select from "react-select";
 import Default from "../assets/shop/products-def.jpg";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -13,7 +17,7 @@ export default function Shop() {
   useEffect(() => {
     g(
       "/api/products" +
-        (category ? `?category=${encodeURIComponent(category)}` : "")
+      (category ? `?category=${encodeURIComponent(category)}` : "")
     ).then(setProducts);
   }, [category]);
 
@@ -49,6 +53,40 @@ export default function Shop() {
     { value: "Lakshmi", label: "Lakshmi" },
   ];
 
+  // ✅ Export Products → PDF
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text(" Products List", 14, 20);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [[ "Name", "Price (₹)", "Category"]],
+      body: products.map((p) => [ p.name, p.price, p.category || "-"]),
+    });
+
+    doc.save("products.pdf");
+  };
+
+  // ✅ Export Products → Excel
+  const exportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      products.map((p) => ({
+        Name: p.name,
+        Price: p.price,
+        Category: p.category || "-",
+      }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "products.xlsx");
+  };
+
+
+
+
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-orange-50 via-white to-red-50 pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-10">
@@ -56,6 +94,23 @@ export default function Shop() {
         <h2 className="text-3xl md:text-4xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-500 mb-10 tracking-tight">
           ✨ Premium Fireworks Collection
         </h2>
+
+        {/* Export Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={exportPDF}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium shadow hover:scale-105 transition"
+          >
+            📄 Export PDF
+          </button>
+          <button
+            onClick={exportExcel}
+            className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow hover:scale-105 transition"
+          >
+            📊 Export Excel
+          </button>
+        </div>
+
 
         {/* Category Filter */}
         <div className="mb-10 max-w-sm mx-auto">

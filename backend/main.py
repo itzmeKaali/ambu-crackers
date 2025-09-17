@@ -69,7 +69,10 @@ def create_product():
     doc = request.json or {}
     doc['created_at'] = firestore.SERVER_TIMESTAMP
     ref = db.collection('products').add(doc)[1]
-    return jsonify({"id": ref.id, **doc})
+
+    snap = ref.get()  # fetch saved doc with server timestamp resolved
+    return jsonify({"id": ref.id, **snap.to_dict()})
+
 
 @app.put("/api/admin/products/<pid>")
 @require_admin
