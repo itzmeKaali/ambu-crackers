@@ -1,0 +1,10 @@
+dispatch:
+  # Send API traffic to backend (default service)
+  - url: "*/api/*"
+    service: default
+
+  # Send everything else (React frontend) to client service
+  - url: "ambucrackerssivakasi.in/*"
+    service: client
+  - url: "www.ambucrackerssivakasi.in/*"
+    service: client

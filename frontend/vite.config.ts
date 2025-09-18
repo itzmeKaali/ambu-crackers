@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
+
 export default defineConfig({
   plugins: [
-      tailwindcss(),
+    tailwindcss(),
   ],
   server: {
     port: 5173,
@@ -14,4 +15,6 @@ export default defineConfig({
       },
     },
   },
+  // ✅ Add this to allow .xlsx files in src/assets
+  assetsInclude: ["**/*.xlsx"],
 })
