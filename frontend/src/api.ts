@@ -5,7 +5,7 @@ export const j = async (path: string, method: string, body?: any, token?: string
 
   // Only set JSON content-type if body is not FormData
   const isFormData = body instanceof FormData;
-  // if (!isFormData) headers['Content-Type'] = 'application/json';
+  if (!isFormData) headers['Content-Type'] = 'application/json';
 
   const res = await fetch(API_BASE + path, {
     method,
