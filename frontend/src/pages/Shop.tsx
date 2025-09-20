@@ -20,7 +20,7 @@ export default function Shop() {
       (category ? `?category=${encodeURIComponent(category)}` : "")
     ).then(setProducts);
   }, [category]);
-
+  console.log("category",category)
   function add(p: Product) {
     setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }));
   }
@@ -52,7 +52,9 @@ export default function Shop() {
     { value: "One Sound", label: "One Sound" },
     { value: "Lakshmi", label: "Lakshmi" },
   ];
-
+useEffect(()=>{
+  console.log("producta",products)
+},[])
   // ✅ Export Products → PDF
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -140,7 +142,7 @@ export default function Shop() {
               {/* Image */}
               <div className="relative aspect-[4/5] overflow-hidden">
                 <img
-                  src={Default}
+                  src={p.image_url}
                   alt={p.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
