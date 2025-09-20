@@ -28,7 +28,7 @@ export default function ProductList({ products, setProducts, token }: ProductLis
 
     let image_url = form.image_url;
     if (file) {
-      const meta = await j("/api/admin/upload-url", "POST", { filename: file.name }, token);
+      const meta = await j("/api/admin/upload-url", "POST", { file: file }, token);
       await fetch(meta.upload_url, {
         method: "PUT",
         headers: { "Content-Type": "application/octet-stream" },
