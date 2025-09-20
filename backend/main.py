@@ -16,6 +16,7 @@ storage_client = storage.Client()
 orders_bucket = storage_client.bucket(ORDERS_BUCKET)
 products_bucket = storage_client.bucket(PRODUCTS_BUCKET)
 
+
 # -------- Public --------
 @app.get("/api/products")
 def list_products():
@@ -52,13 +53,14 @@ def enquiry():
     payload = request.json or {}
     payload['id'] = str(uuid.uuid4())
     payload['created_at'] = datetime.utcnow().isoformat()
+    print('payload')
+    print(payload)
     orders_bucket.blob(f"enquiries/{payload['id']}.json").upload_from_string(json.dumps(payload), content_type='application/json')
     return jsonify({"ok": True})
 
 @app.get("/api/me")
 @require_admin
 def me():
-    print('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
     u = get_user_from_request()
     return jsonify(u or {}), (200 if u else 401)
 
