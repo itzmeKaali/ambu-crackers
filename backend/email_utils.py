@@ -65,4 +65,37 @@ def send_order_pdf_to_admin(order, pdf_bytes):
         
     except Exception as e:
         print(f"Email sending failed: {e}")
-        return False
+        return e
+
+
+def send_enquiry_pdf_to_admin(enquiry):
+    if not GMAIL_EMAIL or not GMAIL_APP_PASSWORD or not ADMIN_EMAIL:
+        return {"success": False, "error": "Missing email configuration"}
+    
+    try:
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = GMAIL_EMAIL
+        msg['To'] = ADMIN_EMAIL
+        msg['Subject'] = "New AmbuCrackers Enquiry"
+        
+        # Email body
+        html_content = (
+            f"<p><b>{enquiry.get('name','')}</b> submitted an enquiry.<br>"
+            f"Email: {enquiry.get('email','')}<br>"
+            f"Phone: {enquiry.get('phone','')}<br>"
+            f"Message: {enquiry.get('message','')}</p>"
+        )
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        # Send email
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"Email sending failed: {e}")
+        return {"success": False, "error": str(e)}

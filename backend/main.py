@@ -5,7 +5,7 @@ from datetime import datetime
 import uuid, json
 from authz import require_admin, get_user_from_request
 from pdf_utils import render_order_pdf
-from email_utils import send_order_pdf_to_admin
+from email_utils import send_order_pdf_to_admin, send_enquiry_pdf_to_admin
 from config import ORDERS_BUCKET, PRODUCTS_BUCKET, PRICE_LIST_BLOB, FRONTEND_ORIGIN
 
 app = Flask(__name__)
@@ -46,7 +46,7 @@ def quick_checkout():
 
     pdf = render_order_pdf(data)
     emailed = send_order_pdf_to_admin(data, pdf)
-    return jsonify({"order_id": order_id, "emailed": bool(emailed)})
+    return jsonify({"order_id": order_id, "emailed": emailed})
 
 @app.post("/api/enquiry")
 def enquiry():
@@ -54,7 +54,8 @@ def enquiry():
     payload['id'] = str(uuid.uuid4())
     payload['created_at'] = datetime.utcnow().isoformat()
     orders_bucket.blob(f"enquiries/{payload['id']}.json").upload_from_string(json.dumps(payload), content_type='application/json')
-    return jsonify({"ok": True})
+    emailed = send_enquiry_pdf_to_admin(payload)
+    return jsonify({"ok": True, "email": emailed})
 
 @app.get("/api/me")
 @require_admin

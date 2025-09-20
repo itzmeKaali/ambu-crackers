@@ -29,3 +29,4 @@ def render_order_pdf(order):
     y-=6; p.line(40,y,550,y); y-=18
     p.setFont("Helvetica-Bold",12); p.drawRightString(550,y, f"Total: ₹{total:.2f}")
     p.showPage(); p.save(); return buf.getvalue()
+
