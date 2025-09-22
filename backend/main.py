@@ -9,7 +9,7 @@ from email_utils import send_order_pdf_to_admin, send_enquiry_pdf_to_admin
 from config import ORDERS_BUCKET, PRODUCTS_BUCKET, PRICE_LIST_BLOB, FRONTEND_ORIGIN
 
 app = Flask(__name__)
-CORS(app, origins=[FRONTEND_ORIGIN, "http://localhost:5173", "http://127.0.0.1:8080"], supports_credentials=True)
+CORS(app, origins=[FRONTEND_ORIGIN], supports_credentials=True)
 
 db = firestore.Client()
 storage_client = storage.Client()
