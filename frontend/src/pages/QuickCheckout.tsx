@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { g, j } from "../api";
 import type { Product } from "../types";
-
+import useToast from '../pages/Toast/useToast'
 // ---------------- Subcomponents ---------------- //
 function Field({
+  
   id,
   label,
   children,
@@ -28,6 +29,7 @@ function Field({
   );
 }
 
+// ---------------- Subcomponents ---------------- //
 function ProductRow({
   r,
   setQty,
@@ -44,6 +46,15 @@ function ProductRow({
         key={r.id}
         className="hidden md:table-row group hover:bg-gradient-to-r hover:from-yellow-50 hover:to-red-50 transition-colors duration-200 border-b border-gray-200"
       >
+        {/* Image */}
+        <td className="px-4 py-4 whitespace-nowrap">
+          <img
+            src={r.image_url || "/default-image.jpg"}
+            alt={r.name}
+            className="w-16 h-16 object-cover rounded-lg"
+          />
+        </td>
+
         {/* Product */}
         <td className="px-4 py-4 whitespace-nowrap">
           <div className="text-sm font-semibold text-gray-900">{r.name}</div>
@@ -97,16 +108,23 @@ function ProductRow({
       >
         {/* Product Info */}
         <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">{r.name}</h3>
-            <p className="text-xs text-gray-500">HSN: {r.hsn || "—"}</p>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className="text-sm text-gray-500 line-through">
-                {formatCurrency(r.mrp)}
-              </span>
-              <span className="text-base font-bold text-green-600">
-                {formatCurrency(r.price)}
-              </span>
+          <div className="flex space-x-4">
+            <img
+              src={r.image_url || "/default-image.jpg"}
+              alt={r.name}
+              className="w-20 h-20 object-cover rounded-xl"
+            />
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">{r.name}</h3>
+              <p className="text-xs text-gray-500">HSN: {r.hsn || "—"}</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="text-sm text-gray-500 line-through">
+                  {formatCurrency(r.mrp)}
+                </span>
+                <span className="text-base font-bold text-green-600">
+                  {formatCurrency(r.price)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -164,6 +182,13 @@ function ProductCard({
           SAVE ₹{r.mrp - r.price}
         </div>
       )}
+
+      {/* 🖼️ Image */}
+      <img
+        src={r.image_url || "/default-image.jpg"}
+        alt={r.name}
+        className="w-full h-40 object-cover rounded-xl mb-3"
+      />
 
       {/* 🏷️ Product Title */}
       <h4 className="text-lg font-extrabold text-gray-800 mb-2">{r.name}</h4>
@@ -231,6 +256,7 @@ export default function QuickCheckout() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
+  const { addToast, ToastContainer } = useToast(); // ✅ Destructure here
 
   useEffect(() => {
     let mounted = true;
@@ -272,54 +298,61 @@ export default function QuickCheckout() {
     return Object.keys(newErrors).length === 0;
   }
 
-  async function placeOrder() {
-    if (!validate()) {
-      const el = document.querySelector("[aria-invalid='true']");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-
-    const items = rows
-      .filter((r) => r.quantity > 0)
-      .map((r) => ({
-        id: r.id,
-        name: r.name,
-        mrp: r.mrp,
-        price: r.price,
-        quantity: r.quantity,
-      }));
-
-    if (items.length === 0) {
-      setErrors((prev) => ({
-        ...prev,
-        items: "Please add at least one product.",
-      }));
-      return;
-    }
-
-    const payload = {
-      customer_name: cust.name,
-      customer_email: cust.email,
-      customer_phone: cust.phone,
-      customer_address: cust.address,
-      items,
-      total,
-    };
-
-    try {
-      setPlacing(true);
-      const res = await j("/api/orders/quick-checkout", "POST", payload);
-      alert(`Order placed! ID: ${res?.order_id || "-"}`);
-      setQty({});
-      setCust({ name: "", email: "", phone: "", address: "" });
-      setErrors({});
-    } catch (err) {
-      console.error(err);
-      alert("Failed to place order. Please try again.");
-    } finally {
-      setPlacing(false);
-    }
+ async function placeOrder() {
+  
+  if (!validate()) {
+    const el = document.querySelector("[aria-invalid='true']");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
   }
+
+  const items = rows
+    .filter((r) => r.quantity > 0)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      mrp: r.mrp,
+      price: r.price,
+      quantity: r.quantity,
+    }));
+
+  if (items.length === 0) {
+    setErrors((prev) => ({
+      ...prev,
+      items: "Please add at least one product.",
+    }));
+    addToast("Please add at least one product.", "warning"); // ✅ toast
+    return;
+  }
+
+  const payload = {
+    customer_name: cust.name,
+    customer_email: cust.email,
+    customer_phone: cust.phone,
+    customer_address: cust.address,
+    items,
+    total,
+  };
+
+  try {
+    setPlacing(true);
+    const res = await j("/api/orders/quick-checkout", "POST", payload);
+
+    // ✅ Success toast instead of alert
+    addToast(`✅ Order placed! ID: ${res?.order_id || "-"}`, "success");
+
+    setQty({});
+    setCust({ name: "", email: "", phone: "", address: "" });
+    setErrors({});
+  } catch (err) {
+    console.error(err);
+    // ✅ Error toast
+    addToast("❌ Failed to place order. Please try again.", "error");
+  } finally {
+    setPlacing(false);
+  }
+}
+
 
   return (
     <main className="min-h-screen p-6 bg-gradient-to-br from-red-50 via-yellow-50 to-orange-100 flex items-start justify-center">
@@ -514,6 +547,8 @@ export default function QuickCheckout() {
           </div>
         )}
       </div>
+        <ToastContainer />
+
     </main>
   );
 }

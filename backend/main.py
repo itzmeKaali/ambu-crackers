@@ -23,7 +23,7 @@ def list_products():
     cat = request.args.get('category')
     q = db.collection("products").where("is_active","==",True)
     if cat: q = q.where("category","==",cat)
-    docs = q.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
+    docs = q.order_by("created_at", direction=firestore.Query.ASCENDING).stream()
     out = []
     for d in docs:
         x = d.to_dict(); x["id"] = d.id; out.append(x)
@@ -92,6 +92,16 @@ def create_product():
     """
     doc = request.json or {}
 
+    # Validate name
+    name = doc.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Product name is required"}), 400
+
+    # Check duplicate name
+    existing = db.collection("products").where("name", "==", name).limit(1).get()
+    if existing:
+        return jsonify({"error": "Product with this name already exists"}), 400
+
     # Convert numeric/boolean fields safely
     try:
         if "mrp" in doc:
@@ -102,9 +112,9 @@ def create_product():
         return jsonify({"error": "Invalid price/mrp"}), 400
 
     doc["is_active"] = str(doc.get("is_active", "true")).lower() in ("true", "1")
-    doc['created_at'] = firestore.SERVER_TIMESTAMP
+    doc["created_at"] = firestore.SERVER_TIMESTAMP
 
-    ref = db.collection('products').add(doc)[1]
+    ref = db.collection("products").add(doc)[1]
     snap = ref.get()
 
     return jsonify({"id": ref.id, **snap.to_dict()}), 201
@@ -113,19 +123,36 @@ def create_product():
 @app.put("/api/admin/products/<pid>")
 @require_admin
 def update_product(pid):
-    fields = ['name','description','price','mrp','category','image_url','is_active']
+    fields = ["name", "description", "price", "mrp", "category", "image_url", "is_active"]
     patch = {k: v for k, v in (request.json or {}).items() if k in fields}
+
+    # Validate name uniqueness if updated
+    if "name" in patch:
+        name = patch["name"].strip()
+        existing = (
+            db.collection("products")
+            .where("name", "==", name)
+            .limit(1)
+            .get()
+        )
+        if existing and existing[0].id != pid:
+            return jsonify({"error": "Another product with this name already exists"}), 400
+        patch["name"] = name
 
     # Convert numeric/boolean if present
     try:
-        if "mrp" in patch: patch["mrp"] = float(patch["mrp"])
-        if "price" in patch: patch["price"] = float(patch["price"])
-        if "is_active" in patch: patch["is_active"] = str(patch["is_active"]).lower() in ("true", "1")
+        if "mrp" in patch:
+            patch["mrp"] = float(patch["mrp"])
+        if "price" in patch:
+            patch["price"] = float(patch["price"])
+        if "is_active" in patch:
+            patch["is_active"] = str(patch["is_active"]).lower() in ("true", "1")
     except ValueError:
         return jsonify({"error": "Invalid numeric/boolean value"}), 400
 
-    db.collection('products').document(pid).update(patch)
+    db.collection("products").document(pid).update(patch)
     return jsonify({"id": pid, **patch})
+
 
 
 @app.delete("/api/admin/products/<pid>")

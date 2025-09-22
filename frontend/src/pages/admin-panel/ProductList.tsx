@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { j } from "../../api";
 import type { Product } from "../../types";
-
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 interface ProductListProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
@@ -52,10 +55,57 @@ export default function ProductList({ products, setProducts, token }: ProductLis
     await j(`/api/admin/products/${id}`, "DELETE", {}, token);
     setProducts(products.filter((p) => p.id !== id));
   }
+  // ✅ Export Products → PDF
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text(" Products List", 14, 20);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [["Name", "Price (₹)", "Category"]],
+      body: products.map((p) => [p.name, p.price, p.category || "-"]),
+    });
+
+    doc.save("products.pdf");
+  };
+
+  // ✅ Export Products → Excel
+  const exportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      products.map((p) => ({
+        Name: p.name,
+        Price: p.price,
+        Category: p.category || "-",
+      }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "products.xlsx");
+  };
+
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-red-50 via-yellow-50 to-orange-50 min-h-screen w-full">
       <h2 className="text-3xl md:text-4xl font-bold text-red-700 mb-6">Products</h2>
+
+      {/* Export Buttons */}
+      <div className="flex gap-3">
+        <button
+          onClick={exportPDF}
+          className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium shadow hover:scale-105 transition"
+        >
+          📄 Export PDF
+        </button>
+        <button
+          onClick={exportExcel}
+          className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow hover:scale-105 transition"
+        >
+          📊 Export Excel
+        </button>
+      </div>
+
 
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto w-full">
@@ -155,95 +205,95 @@ export default function ProductList({ products, setProducts, token }: ProductLis
         ))}
       </div>
 
- {/* Edit Modal */}
-{editingProduct && (
-  <div className="fixed inset-0 flex justify-center items-center z-50">
-    {/* Correct translucent overlay */}
-    <div
-      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-      style={{ pointerEvents: "auto" }}
-    ></div>
+      {/* Edit Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 flex justify-center items-center z-50">
+          {/* Correct translucent overlay */}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            style={{ pointerEvents: "auto" }}
+          ></div>
 
-    {/* Modal content */}
-    <div className="relative bg-white p-6 rounded-xl w-80 md:w-96 z-10 flex flex-col gap-4 shadow-xl">
-      <h3 className="text-xl font-bold mb-2 text-red-700">Edit Product</h3>
+          {/* Modal content */}
+          <div className="relative bg-white p-6 rounded-xl w-80 md:w-96 z-10 flex flex-col gap-4 shadow-xl">
+            <h3 className="text-xl font-bold mb-2 text-red-700">Edit Product</h3>
 
-      {/* Name */}
-      <div className="flex flex-col">
-        <label className="text-gray-700 text-sm mb-1">Name</label>
-        <input
-          type="text"
-          value={form.name || ""}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-        />
-      </div>
+            {/* Name */}
+            <div className="flex flex-col">
+              <label className="text-gray-700 text-sm mb-1">Name</label>
+              <input
+                type="text"
+                value={form.name || ""}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
+              />
+            </div>
 
-      {/* Category */}
-      <div className="flex flex-col">
-        <label className="text-gray-700 text-sm mb-1">Category</label>
-        <input
-          type="text"
-          value={form.category || ""}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-        />
-      </div>
+            {/* Category */}
+            <div className="flex flex-col">
+              <label className="text-gray-700 text-sm mb-1">Category</label>
+              <input
+                type="text"
+                value={form.category || ""}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
+              />
+            </div>
 
-      {/* MRP */}
-      <div className="flex flex-col">
-        <label className="text-gray-700 text-sm mb-1">MRP</label>
-        <input
-          type="number"
-          value={form.mrp || 0}
-          onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })}
-          className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-        />
-      </div>
+            {/* MRP */}
+            <div className="flex flex-col">
+              <label className="text-gray-700 text-sm mb-1">MRP</label>
+              <input
+                type="number"
+                value={form.mrp || 0}
+                onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })}
+                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
+              />
+            </div>
 
-      {/* Price */}
-      <div className="flex flex-col">
-        <label className="text-gray-700 text-sm mb-1">Price</label>
-        <input
-          type="number"
-          value={form.price || 0}
-          onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-          className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-        />
-      </div>
+            {/* Price */}
+            <div className="flex flex-col">
+              <label className="text-gray-700 text-sm mb-1">Price</label>
+              <input
+                type="number"
+                value={form.price || 0}
+                onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
+              />
+            </div>
 
-      {/* File Upload */}
-      <div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="border rounded px-3 py-2 w-full"
-        />
-      </div>
+            {/* File Upload */}
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="border rounded px-3 py-2 w-full"
+              />
+            </div>
 
-      {/* Buttons */}
-      <div className="flex justify-end gap-2 mt-2">
-        <button
-          onClick={() => {
-            setEditingProduct(null);
-            setForm({});
-            setFile(null);
-          }}
-          className="px-3 py-1 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={updateProduct}
-          className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            {/* Buttons */}
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setForm({});
+                  setFile(null);
+                }}
+                className="px-3 py-1 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateProduct}
+                className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

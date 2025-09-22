@@ -192,14 +192,23 @@ function ProductForm({ token, products, setProducts }: any) {
                 }`}
               />
             </div>
-            <input
-              placeholder="Category"
+            <select
               value={form.category || ""}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className={`rounded-lg border px-4 py-2 ${
+              className={`w-full rounded-lg border px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 errors.category ? "border-red-500" : "border-gray-300"
               }`}
-            />
+            >
+              <option value="Sparklers">Sparklers</option>
+              <option value="Flower Pots">Flower Pots</option>
+              <option value="Rockets">Rockets</option>
+              <option value="Chakkars">Chakkars</option>
+              <option value="Bombs">Bombs</option>
+              <option value="Fancy">Fancy</option>
+              <option value="Gift Box">Gift Box</option>
+              <option value="One Sound">One Sound</option>
+              <option value="Lakshmi">Lakshmi</option>
+            </select>
             <label className="flex items-center gap-2 mt-2">
               <input
                 type="checkbox"

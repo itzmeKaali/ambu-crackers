@@ -3,6 +3,8 @@ import { auth, signOut } from "../firebase";
 import type { Product } from "../types";
 import ProductForm from './admin-panel/add-prodect';
 import ProductList from './admin-panel/ProductList';
+import AdminOrderList from './admin-panel/Order';
+import AdminOffer from './admin-panel/Offfer';
 
 interface AdminPanelProps {
   user: any;
@@ -62,28 +64,53 @@ export default function AdminPanel({
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full">
-          <button
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition duration-200 ${
-              activeTab === "add"
-                ? "bg-blue-600 text-white shadow-lg"
-                : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
-            }`}
-            onClick={() => setActiveTab("add")}
-          >
-            Add Product
-          </button>
-          <button
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition duration-200 ${
-              activeTab === "list"
-                ? "bg-blue-600 text-white shadow-lg"
-                : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
-            }`}
-            onClick={() => setActiveTab("list")}
-          >
-            All Products
-          </button>
-        </div>
+       {/* Tabs */}
+<div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full">
+  <button
+    className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition duration-200 ${
+      activeTab === "add"
+        ? "bg-blue-600 text-white shadow-lg"
+        : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
+    }`}
+    onClick={() => setActiveTab("add")}
+  >
+    Add Product
+  </button>
+
+  <button
+    className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition duration-200 ${
+      activeTab === "list"
+        ? "bg-blue-600 text-white shadow-lg"
+        : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
+    }`}
+    onClick={() => setActiveTab("list")}
+  >
+    All Products
+  </button>
+
+  <button
+    className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition duration-200 ${
+      activeTab === "AdminOffer"
+        ? "bg-blue-600 text-white shadow-lg"
+        : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
+    }`}
+    onClick={() => setActiveTab("AdminOffer")}
+  >
+    AdminOffer
+  </button>
+
+  <button
+    className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold transition duration-200 ${
+      activeTab === "AdminOrderList"
+        ? "bg-blue-600 text-white shadow-lg"
+        : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
+    }`}
+    onClick={() => setActiveTab("AdminOrderList")}
+  >
+    AdminOrderList
+  </button>
+</div>
+
 
         {/* Main Content */}
         <div className="w-full bg-white rounded-2xl shadow-lg p-6 md:p-8 mt-2">
@@ -93,6 +120,13 @@ export default function AdminPanel({
           {activeTab === "list" && (
             <ProductList products={products} setProducts={setProducts} token={token} />
           )}
+          {activeTab === "AdminOrderList" && (
+            <AdminOrderList />
+          )} 
+           {activeTab === "AdminOffer" && (
+            <AdminOffer />
+          )}
+
         </div>
       </div>
     </div>
