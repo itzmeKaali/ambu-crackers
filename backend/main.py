@@ -4,9 +4,11 @@ from google.cloud import firestore, storage
 from datetime import datetime
 import uuid, json
 from authz import require_admin, get_user_from_request
-from pdf_utils import render_order_pdf
-from email_utils import send_order_pdf_to_admin, send_enquiry_pdf_to_admin
+from utils.pdf_utils import render_order_pdf
+from utils.email_utils import send_order_pdf_to_admin, send_enquiry_pdf_to_admin
 from config import ORDERS_BUCKET, PRODUCTS_BUCKET, PRICE_LIST_BLOB, FRONTEND_ORIGIN
+
+from utils.order_utils import validate_coupon
 
 app = Flask(__name__)
 CORS(app, origins=[FRONTEND_ORIGIN], supports_credentials=True)
@@ -34,6 +36,22 @@ def price_list_url():
     blob = products_bucket.blob(PRICE_LIST_BLOB)
     url = blob.generate_signed_url(version='v4', expiration=3600, method='GET')
     return jsonify({"url": url})
+
+
+@app.get("/api/orders/apply-coupon")
+def apply_coupon():
+    coupon_code = request.args.get("code")
+    data = request.json or {}
+    if not coupon_code:
+        return jsonify({"error": "Coupon code is required"}), 400
+
+    result = validate_coupon(coupon_code, data)
+    if not result.get("valid"):
+        return jsonify({"error": result.get("error", "Invalid coupon code")}), 400
+    # Remove 'valid' key from response
+    response = {k: v for k, v in result.items() if k != "valid"}
+    return jsonify(response)
+
 
 @app.post("/api/orders/quick-checkout")
 def quick_checkout():

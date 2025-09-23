@@ -17,3 +17,5 @@ venv.bak/
 #React
 ../node_modules/
 node_modules/
+
+.pyc
