@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Confetti from "react-confetti";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
+import { g } from '../../api';
 
 interface Coupon {
   id: string;
@@ -29,18 +30,35 @@ export default function AdminOffer() {
   const [companyName, setCompanyName] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Load coupons from localStorage
+  // Load coupons from API
   useEffect(() => {
-    const stored = localStorage.getItem("coupons");
-    if (stored) {
-      setCoupons(JSON.parse(stored));
-    }
+    // Replace 'YOUR_TOKEN' with your actual Bearer token or fetch from auth state
+    const token = localStorage.getItem('token'); // or get from context/auth provider
+    g("/api/vouchers", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch vouchers");
+        return res.json();
+      })
+      .then((data) => {
+        setCoupons(
+          (data || []).map((v: any) => ({
+            id: v.code,
+            title: v.title || v.code, // or v.title if available
+            discount: v.discount_value,
+            companyName: v.companyName || "", // fallback if not present
+            theme: COLORS[Math.floor(Math.random() * COLORS.length)],
+          }))
+        );
+      })
+      .catch((err) => {
+        // Optionally handle error
+        setCoupons([]);
+      });
   }, []);
-
-  // Save coupons to localStorage
-  useEffect(() => {
-    localStorage.setItem("coupons", JSON.stringify(coupons));
-  }, [coupons]);
 
   // Show confetti when coupons added
   useEffect(() => {
@@ -51,26 +69,48 @@ export default function AdminOffer() {
     }
   }, [coupons.length]);
 
-  // Add new coupon
-  const addCoupon = () => {
+  // Add new coupon (voucher) via API
+  const addCoupon = async () => {
     if (!title || !discount || !companyName) return;
 
-    const randomTheme = COLORS[Math.floor(Math.random() * COLORS.length)];
-
-    const newCoupon: Coupon = {
-      id: Math.random().toString(36).substr(2, 9),
-      title,
-      discount,
-      companyName,
-      theme: randomTheme,
+    // Prepare payload for backend
+    const payload = {
+      code: title.trim(),
+      discount_type: "percentage", // or allow user to select type
+      discount_value: discount,
+      // Optionally add companyName if backend supports it
     };
 
-    setCoupons((prev) => [...prev, newCoupon]);
-
-    // reset form
-    setTitle("");
-    setDiscount(0);
-    setCompanyName("");
+    try {
+      const res = await g("/api/vouchers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include", // if auth required
+      });
+      if (!res.ok) {
+        // Optionally show error to user
+        return;
+      }
+      const data = await res.json();
+      // Add to state with random theme
+      setCoupons((prev) => [
+        ...prev,
+        {
+          id: data.code,
+          title: data.code, // or data.title if available
+          discount: data.discount_value,
+          companyName: companyName,
+          theme: COLORS[Math.floor(Math.random() * COLORS.length)],
+        },
+      ]);
+      // reset form
+      setTitle("");
+      setDiscount(0);
+      setCompanyName("");
+    } catch (e) {
+      // Optionally handle error
+    }
   };
 
   // Delete coupon

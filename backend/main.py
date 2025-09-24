@@ -7,17 +7,25 @@ from authz import require_admin, get_user_from_request
 from utils.pdf_utils import render_order_pdf
 from utils.email_utils import send_order_pdf_to_admin, send_enquiry_pdf_to_admin
 from config import ORDERS_BUCKET, PRODUCTS_BUCKET, PRICE_LIST_BLOB, FRONTEND_ORIGIN
+from marshmallow import ValidationError
+from schema import VoucherCreateSchema, VoucherListSchema
+
+from db import db
 
 from utils.order_utils import validate_coupon
+
 
 app = Flask(__name__)
 CORS(app, origins=[FRONTEND_ORIGIN], supports_credentials=True)
 
-db = firestore.Client()
+
 storage_client = storage.Client()
 orders_bucket = storage_client.bucket(ORDERS_BUCKET)
 products_bucket = storage_client.bucket(PRODUCTS_BUCKET)
 
+voucher_create_schema = VoucherCreateSchema()
+voucher_list_schema = VoucherListSchema(many=True)
+voucher_collection = db.collection("voucher")
 
 # -------- Public --------
 @app.get("/api/products")
@@ -138,6 +146,25 @@ def create_product():
     return jsonify({"id": ref.id, **snap.to_dict()}), 201
 
 
+@app.get("/api/admin/orders")
+# @require_admin
+def orders():
+    """Fetch all orders from GCS"""
+    blobs = storage_client.list_blobs(ORDERS_BUCKET, prefix="orders/")
+    orders = []
+    for blob in blobs:
+        if not blob.name.endswith(".json"):
+            continue
+        data = blob.download_as_string()
+        try:
+            order = json.loads(data)
+            orders.append(order)
+        except json.JSONDecodeError:
+            continue
+    # Sort by created_at descending
+    orders.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return jsonify(orders)
+
 @app.put("/api/admin/products/<pid>")
 @require_admin
 def update_product(pid):
@@ -172,12 +199,52 @@ def update_product(pid):
     return jsonify({"id": pid, **patch})
 
 
-
 @app.delete("/api/admin/products/<pid>")
 @require_admin
 def delete_product(pid):
     db.collection('products').document(pid).delete()
     return jsonify({"deleted": True})
 
+
+# --- Voucher API (now under /api/vouchers) ---
+@app.route("/api/vouchers", methods=["GET"])
+@require_admin
+def list_vouchers():
+    """Fetch all vouchers from Firestore"""
+    docs = voucher_collection.stream()
+    vouchers = [doc.to_dict() for doc in docs]
+    return jsonify(voucher_list_schema.dump(vouchers))
+
+
+@app.route("/api/vouchers", methods=["POST"])
+@require_admin
+def create_voucher():
+    """Create a voucher in Firestore"""
+    try:
+        data = voucher_create_schema.load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
+
+    # Check if voucher with same code already exists
+    existing = voucher_collection.document(data["code"]).get()
+    if existing.exists:
+        return jsonify({"error": "Voucher code already exists"}), 400
+
+    # Save using code as document ID
+    voucher_collection.document(data["code"]).set(data)
+    return jsonify(data), 201
+
+
+@app.route("/api/vouchers/<string:code>", methods=["DELETE"])
+@require_admin
+def delete_voucher(code):
+    """Delete a voucher by code"""
+    doc_ref = voucher_collection.document(code)
+    if not doc_ref.get().exists:
+        return jsonify({"error": "Voucher not found"}), 404
+
+    doc_ref.delete()
+    return jsonify({"message": f"Voucher '{code}' deleted successfully"})
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

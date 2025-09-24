@@ -20,9 +20,16 @@
 # backend
 cd backend
 pip install -r requirements.txt
+# for linux
 export ORDERS_BUCKET=your-orders-bucket
 export PRODUCTS_BUCKET=your-products-bucket
 export PRICE_LIST_BLOB=price-list/ambucrackers-price-list.pdf
+
+#for cmd prompt
+set ORDERS_BUCKET=oders-bucket
+set PRODUCTS_BUCKET=crackers-bucket
+set PRICE_LIST_BLOB=price-list/ambucrackers-price-list.pdf
+
 python main.py
 
 # frontend
