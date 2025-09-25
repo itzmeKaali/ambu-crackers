@@ -27,21 +27,15 @@ def get_user_from_request():
     if not hdr.startswith("Bearer "): 
         return None
     token = hdr.split(" ", 1)[1]
-    print("DEBUG token:", token)
     try:
         decoded = auth.verify_id_token(token)
-        print('decoded')
-        print(decoded)
         uid = decoded["uid"]
         is_admin = bool(decoded.get("admin"))
-        print('is_admin')
-        print(is_admin)
         if not is_admin:
             doc = db.collection("roles").document(uid).get()
             is_admin = bool(doc.to_dict().get("admin")) if doc.exists else False
         return {"uid": uid, "email": decoded.get("email"), "admin": is_admin}
     except Exception as err:
-        print('&&&&&&&&&&&&&&')
         print(str(err))
         return None
 

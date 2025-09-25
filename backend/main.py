@@ -59,7 +59,7 @@ def apply_coupon():
     # Remove 'valid' key from response
     response = {k: v for k, v in result.items() if k != "valid"}
     return jsonify(response)
-
+    
 
 @app.post("/api/orders/quick-checkout")
 def quick_checkout():
@@ -67,12 +67,40 @@ def quick_checkout():
     order_id = str(uuid.uuid4())
     data['order_id'] = order_id
     data['created_at'] = datetime.utcnow().isoformat()
+    data['status'] = "NOT_ENQUIRED"  # default new orders
+    data['order_pdf'] = None
 
-    orders_bucket.blob(f"orders/{order_id}.json").upload_from_string(json.dumps(data), content_type='application/json')
+    # Save order JSON first
+    orders_bucket.blob(f"orders/{order_id}.json").upload_from_string(
+        json.dumps(data),
+        content_type='application/json'
+    )
 
+    # Generate PDF
     pdf = render_order_pdf(data)
+
+    # Upload PDF to bucket
+    pdf_blob = orders_bucket.blob(f"pdf/{order_id}.pdf")
+    pdf_blob.upload_from_string(pdf, content_type="application/pdf")
+
+    pdf_url = pdf_blob.public_url
+    data["order_pdf"] = pdf_url
+
+    # Save updated JSON with PDF URL
+    orders_bucket.blob(f"orders/{order_id}.json").upload_from_string(
+        json.dumps(data),
+        content_type='application/json'
+    )
+
+    # Email PDF
     emailed = send_order_pdf_to_admin(data, pdf)
-    return jsonify({"order_id": order_id, "emailed": emailed})
+
+    return jsonify({
+        "order_id": order_id,
+        "emailed": emailed,
+        "order_pdf": pdf_url
+    })
+
 
 @app.post("/api/enquiry")
 def enquiry():
@@ -108,6 +136,33 @@ def upload_image():
     blob.upload_from_file(file, content_type=file.content_type)
 
     return jsonify({"public_url": blob.public_url})
+
+@app.patch("/api/admin/orders/<order_id>/status")
+# @require_admin
+def update_order_status(order_id):
+    """Update only the status field of an order"""
+    data = request.json or {}
+    new_status = data.get("status")
+
+    allowed_status = ["NOT_ENQUIRED", "IN_PROGRESS", "DELIVERED", "ABORTED"]
+    if new_status not in allowed_status:
+        return jsonify({"error": f"Invalid status. Allowed: {allowed_status}"}), 400
+
+    blob = orders_bucket.blob(f"orders/{order_id}.json")
+    if not blob.exists():
+        return jsonify({"error": "Order not found"}), 404
+
+    order_data = json.loads(blob.download_as_string())
+    order_data["status"] = new_status
+
+    # Save back to GCS
+    blob.upload_from_string(
+        json.dumps(order_data),
+        content_type="application/json"
+    )
+
+    return jsonify({"message": "Status updated", "order": order_data})
+
 
 
 @app.post("/api/admin/products")

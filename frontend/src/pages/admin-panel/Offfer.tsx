@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import Confetti from "react-confetti";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
-import { g } from '../../api';
+import { g, j } from "../../api";
 
 interface Coupon {
   id: string;
   title: string;
   discount: number;
-  companyName: string;
-  theme: string; // color theme
+  theme: string;
 }
 
 const COLORS = [
@@ -27,40 +25,27 @@ export default function AdminOffer() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [title, setTitle] = useState("");
   const [discount, setDiscount] = useState<number>(0);
-  const [companyName, setCompanyName] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
+  const token = localStorage.getItem("token");
 
-  // Load coupons from API
+  // Load vouchers
   useEffect(() => {
-    // Replace 'YOUR_TOKEN' with your actual Bearer token or fetch from auth state
-    const token = localStorage.getItem('token'); // or get from context/auth provider
-    g("/api/vouchers", {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch vouchers");
-        return res.json();
-      })
-      .then((data) => {
+    if (!token) return;
+    g("/api/vouchers", token)
+      .then((data: any[]) => {
         setCoupons(
-          (data || []).map((v: any) => ({
+          (data || []).map((v) => ({
             id: v.code,
-            title: v.title || v.code, // or v.title if available
+            title: v.code,
             discount: v.discount_value,
-            companyName: v.companyName || "", // fallback if not present
             theme: COLORS[Math.floor(Math.random() * COLORS.length)],
           }))
         );
       })
-      .catch((err) => {
-        // Optionally handle error
-        setCoupons([]);
-      });
-  }, []);
+      .catch(() => setCoupons([]));
+  }, [token]);
 
-  // Show confetti when coupons added
+  // Confetti effect
   useEffect(() => {
     if (coupons.length > 0) {
       setShowConfetti(true);
@@ -69,216 +54,104 @@ export default function AdminOffer() {
     }
   }, [coupons.length]);
 
-  // Add new coupon (voucher) via API
+  // Add new voucher
   const addCoupon = async () => {
-    if (!title || !discount || !companyName) return;
-
-    // Prepare payload for backend
-    const payload = {
-      code: title.trim(),
-      discount_type: "percentage", // or allow user to select type
-      discount_value: discount,
-      // Optionally add companyName if backend supports it
-    };
-
+    if (!title || !discount) return;
     try {
-      const res = await g("/api/vouchers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include", // if auth required
-      });
-      if (!res.ok) {
-        // Optionally show error to user
-        return;
-      }
-      const data = await res.json();
-      // Add to state with random theme
+      const payload = {
+        code: title.trim(),
+        discount_type: "percentage",
+        discount_value: discount,
+      };
+      const data = await j("/api/vouchers", "POST", payload, token);
       setCoupons((prev) => [
         ...prev,
         {
           id: data.code,
-          title: data.code, // or data.title if available
+          title: data.code,
           discount: data.discount_value,
-          companyName: companyName,
           theme: COLORS[Math.floor(Math.random() * COLORS.length)],
         },
       ]);
-      // reset form
       setTitle("");
       setDiscount(0);
-      setCompanyName("");
-    } catch (e) {
-      // Optionally handle error
+    } catch (err: any) {
+      alert(err.message || "Failed to add voucher");
     }
   };
 
-  // Delete coupon
-  const deleteCoupon = (id: string) => {
-    setCoupons((prev) => prev.filter((c) => c.id !== id));
+  // Delete voucher
+  const deleteCoupon = async (id: string) => {
+    try {
+      await j(`/api/vouchers/${id}`, "DELETE", undefined, token);
+      setCoupons((prev) => prev.filter((c) => c.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete voucher");
+    }
   };
 
   return (
     <div className="p-4 sm:p-8">
-      {/* Screen-wide confetti */}
-      {showConfetti && (
-        <Confetti
-          recycle={false}
-          numberOfPieces={250}
-          colors={["#ef4444", "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6"]}
-        />
-      )}
+      {showConfetti && <Confetti recycle={false} numberOfPieces={250} />}
 
-      {/* Coupon Creation Form */}
+      {/* Form */}
       <div className="max-w-xl mx-auto mb-8 bg-white p-5 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-lg font-bold mb-3 text-gray-800">
-          Create New Voucher
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <h2 className="text-lg font-bold mb-3">Create New Voucher</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             type="text"
-            placeholder="Coupon Title"
+            placeholder="Coupon Code"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+            className="border rounded-md px-3 py-2 text-sm"
           />
           <input
             type="number"
             placeholder="Discount %"
             value={discount}
             onChange={(e) => setDiscount(Number(e.target.value))}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-          />
-          <input
-            type="text"
-            placeholder="Company Name"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+            className="border rounded-md px-3 py-2 text-sm"
           />
         </div>
         <button
           onClick={addCoupon}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md shadow hover:bg-blue-700 transition"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md"
         >
           Add Voucher
         </button>
       </div>
 
-      {/* Coupon List */}
+      {/* List */}
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-          Current Vouchers
-        </h2>
-
-        {coupons.length === 0 && (
-          <div className="bg-gray-50 p-5 rounded-lg shadow-inner text-center text-gray-500 text-base italic border border-gray-200">
-            <p>No vouchers created yet. Add one above 👆</p>
+        <h2 className="text-xl font-bold mb-4 text-center">Current Vouchers</h2>
+        {coupons.length === 0 ? (
+          <div className="bg-gray-50 p-5 rounded-lg text-center text-gray-500 italic">
+            No vouchers created yet. Add one above 👆
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {coupons.map((coupon) => (
+              <motion.div
+                key={coupon.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className={`relative overflow-hidden bg-gradient-to-br ${coupon.theme} p-4 rounded-xl shadow-lg`}
+              >
+                <button
+                  onClick={() => deleteCoupon(coupon.id)}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6"
+                >
+                  ×
+                </button>
+                <div>
+                  <h3 className="text-lg font-bold">{coupon.title}</h3>
+                  <p className="text-xl font-extrabold">{coupon.discount}% OFF</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {coupons.map((coupon) => (
-            <motion.div
-              key={coupon.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className={`relative overflow-hidden bg-gradient-to-br ${coupon.theme} text-gray-800 p-4 rounded-xl shadow-lg border-2 border-dashed border-gray-300 group`}
-            >
-              {/* Multiple Fireworks spark loop inside */}
-              <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
-                {[...Array(3)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{
-                      opacity: [0, 1, 0],
-                      scale: [0.5, 1.3, 0.5],
-                      rotate: [0, 90, 180],
-                    }}
-                    transition={{
-                      duration: 2 + i,
-                      repeat: Infinity,
-                      delay: i * 0.5,
-                    }}
-                    className="absolute"
-                  >
-                    <Sparkles
-                      className={`w-8 h-8 ${
-                        i % 2 === 0 ? "text-yellow-400" : "text-pink-500"
-                      }`}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Delete Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteCoupon(coupon.id);
-                }}
-                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold opacity-90 hover:opacity-100 transition duration-200 z-20"
-                aria-label="Remove coupon"
-              >
-                ×
-              </button>
-
-              {/* Coupon Content */}
-              <div className="relative flex flex-col h-full justify-between z-10">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold leading-tight text-gray-900 mb-1">
-                    {coupon.title}
-                  </h3>
-
-                  <div className="flex items-baseline mb-1">
-                    <p className="text-2xl sm:text-3xl font-extrabold text-blue-800 leading-none">
-                      {coupon.discount}
-                    </p>
-                    <span className="text-sm sm:text-lg font-bold text-blue-700 ml-1">
-                      % OFF
-                    </span>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-gray-700 mb-2">
-                    <span className="font-semibold">Valid for:</span>{" "}
-                    {coupon.companyName}
-                  </p>
-                </div>
-
-                <div className="border-t border-dashed border-gray-400 pt-1 text-[11px] sm:text-xs text-gray-600">
-                  <p>
-                    Voucher ID:{" "}
-                    <span className="font-mono text-gray-800">{coupon.id}</span>
-                  </p>
-                  <p className="mt-1">
-                    <strong>Conditions:</strong> See terms & conditions.
-                  </p>
-                </div>
-              </div>
-
-              {/* Perforated coupon cutout edges (top & bottom) */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-full flex justify-between px-2">
-                  {Array.from({ length: 18 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 bg-white rounded-full border border-gray-300"
-                    ></div>
-                  ))}
-                </div>
-                <div className="absolute bottom-0 left-0 w-full flex justify-between px-2">
-                  {Array.from({ length: 18 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 bg-white rounded-full border border-gray-300"
-                    ></div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
       </div>
     </div>
   );
