@@ -63,7 +63,7 @@ export default function AdminOffer() {
         discount_type: "percentage",
         discount_value: discount,
       };
-      const data = await j("/api/vouchers", "POST", payload, token);
+      const data = await j("/api/vouchers", "POST", payload);
       setCoupons((prev) => [
         ...prev,
         {
@@ -83,7 +83,7 @@ export default function AdminOffer() {
   // Delete voucher
   const deleteCoupon = async (id: string) => {
     try {
-      await j(`/api/vouchers/${id}`, "DELETE", undefined, token);
+      await j(`/api/vouchers/${id}`, "DELETE", undefined);
       setCoupons((prev) => prev.filter((c) => c.id !== id));
     } catch (err: any) {
       alert(err.message || "Failed to delete voucher");
