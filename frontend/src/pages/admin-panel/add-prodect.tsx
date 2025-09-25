@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { j } from "../../api";
 import type { Product } from "../../types";
 import * as XLSX from "xlsx";
 import exampleFile from "../../assets/exampule-formet.xlsx";
+import CreatableSelect from "react-select/creatable";
+
 
 function ProductForm({ token, products, setProducts }: any) {
   const [form, setForm] = useState<Partial<Product>>({ is_active: true });
@@ -13,6 +15,25 @@ function ProductForm({ token, products, setProducts }: any) {
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");
   const [bulkErrors, setBulkErrors] = useState<string[]>([]);
+
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (products && products.length > 0) {
+      const dynamicCats = Array.from(
+        new Set(products.map((p: Product) => p.category))
+      ) as string[];
+      setCategories(dynamicCats);
+    } else {
+      setCategories([]);
+    }
+  }, [products]);
+
+
+
+
+
+
 
   /** -------- SINGLE IMAGE UPLOAD -------- **/
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,9 +183,8 @@ function ProductForm({ token, products, setProducts }: any) {
               placeholder="Product Name"
               value={form.name || ""}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className={`rounded-lg border px-4 py-2 focus:ring-2 focus:ring-green-400 ${
-                errors.name ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`rounded-lg border px-4 py-2 focus:ring-2 focus:ring-green-400 ${errors.name ? "border-red-500" : "border-gray-300"
+                }`}
             />
             <textarea
               placeholder="Description"
@@ -178,37 +198,32 @@ function ProductForm({ token, products, setProducts }: any) {
                 placeholder="MRP"
                 value={form.mrp || ""}
                 onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) })}
-                className={`rounded-lg border px-4 py-2 ${
-                  errors.mrp ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`rounded-lg border px-4 py-2 ${errors.mrp ? "border-red-500" : "border-gray-300"
+                  }`}
               />
               <input
                 type="number"
                 placeholder="Price"
                 value={form.price || ""}
                 onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) })}
-                className={`rounded-lg border px-4 py-2 ${
-                  errors.price ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`rounded-lg border px-4 py-2 ${errors.price ? "border-red-500" : "border-gray-300"
+                  }`}
               />
             </div>
-            <select
-              value={form.category || ""}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className={`w-full rounded-lg border px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.category ? "border-red-500" : "border-gray-300"
-              }`}
-            >
-              <option value="Sparklers">Sparklers</option>
-              <option value="Flower Pots">Flower Pots</option>
-              <option value="Rockets">Rockets</option>
-              <option value="Chakkars">Chakkars</option>
-              <option value="Bombs">Bombs</option>
-              <option value="Fancy">Fancy</option>
-              <option value="Gift Box">Gift Box</option>
-              <option value="One Sound">One Sound</option>
-              <option value="Lakshmi">Lakshmi</option>
-            </select>
+            <CreatableSelect
+              options={categories.map((c) => ({ value: c, label: c }))}
+              value={form.category ? { value: form.category, label: form.category } : null}
+              onChange={(selected) => setForm({ ...form, category: selected?.value || "" })}
+              onCreateOption={(newCategory) => {
+                // add new category dynamically
+                setCategories((prev) => [...prev, newCategory]);
+                setForm({ ...form, category: newCategory });
+              }}
+              className="react-select-container"
+              classNamePrefix="react-select"
+            />
+            {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
+
             <label className="flex items-center gap-2 mt-2">
               <input
                 type="checkbox"

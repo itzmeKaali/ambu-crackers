@@ -10,9 +10,9 @@ import explore from "../assets/home/one.jpg";
 import Offer1 from '../assets/home/offer-images/combo-offer.jpg';
 import combooffer from '../assets/home/offer-images/combo-offer.jpg';
 import Newone from '../assets/home/offer-images/new-one.jpg';
-import Offer30 from '../assets/home/offer-images/offer-30.jpg';
+import Offer80 from '../assets/home/offer-images/offer-80.jpg';
 
-const sliderImages = [Offer30, Newone, Offer1, combooffer];
+const sliderImages = [Offer80, Newone, Offer1, combooffer];
 
 const highlights = [
   "🔥 Festival Discounts up to 80% OFFER",

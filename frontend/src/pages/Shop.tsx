@@ -9,15 +9,28 @@ export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [showCart, setShowCart] = useState(false);
+  const [, setShowCart] = useState(false);
   const [loading, setLoading] = useState(false);
- const { addToast, ToastContainer } = useToast();
+  const { addToast, ToastContainer } = useToast();
+  const [categories, setCategories] = useState<string[]>([]);
 
-  // Fetch products
+  // Fetch all products once
   useEffect(() => {
-    g("/api/products" + (category ? `?category=${encodeURIComponent(category)}` : ""))
-      .then(setProducts);
-  }, [category]);
+    g("/api/products").then((data: Product[]) => {
+      setProducts(data);
+
+      // Extract unique categories
+      const cats = Array.from(
+        new Set(data.map((p) => p.category).filter((c): c is string => Boolean(c)))
+      );
+      setCategories(cats.sort()); // optional: sorted alphabetically
+    });
+  }, []);
+
+  // Filtered products based on selected category
+  const filteredProducts = category
+    ? products.filter((p) => p.category === category)
+    : products;
 
   // Cart helpers
   function add(p: Product) {
@@ -34,61 +47,51 @@ export default function Shop() {
   }
 
   // Prepare cart items
-  const items = products
+  const items = filteredProducts
     .filter((p) => cart[p.id])
     .map((p) => ({ ...p, quantity: cart[p.id] }));
 
   const total = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
 
-  // Categories
+  // Category dropdown options
   const categoryOptions = [
     { value: "", label: "All Categories" },
-    { value: "Sparklers", label: "Sparklers" },
-    { value: "Flower Pots", label: "Flower Pots" },
-    { value: "Rockets", label: "Rockets" },
-    { value: "Chakkars", label: "Chakkars" },
-    { value: "Bombs", label: "Bombs" },
-    { value: "Fancy", label: "Fancy" },
-    { value: "Gift Box", label: "Gift Box" },
-    { value: "One Sound", label: "One Sound" },
-    { value: "Lakshmi", label: "Lakshmi" },
+    ...categories.map((c) => ({ value: c, label: c })),
   ];
 
   // Place Order
-async function placeOrder() {
-  if (items.length === 0) {
-    addToast("Your cart is empty!", "warning");
-    return;
-  }
-
-  const payload = items.map((r) => ({
-    id: r.id,
-    name: r.name,
-    mrp: r.mrp ?? r.price, // use mrp if exists, else price
-    price: r.price,
-    quantity: r.quantity,
-  }));
-
-  setLoading(true);
-
-  try {
-    const res = await j("/api/orders/quick-checkout", "POST", payload);
-    if (res.success) {
-      setCart({});
-      setShowCart(false);
-      addToast("✅ Order placed successfully!", "success");
-    } else {
-      addToast(`❌ Error: ${res.message || "Something went wrong"}`, "error");
+  async function placeOrder() {
+    if (items.length === 0) {
+      addToast("Your cart is empty!", "warning");
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    addToast("❌ Failed to place order. Try again.", "error");
-  } finally {
-    setLoading(false);
+
+    const payload = items.map((r) => ({
+      id: r.id,
+      name: r.name,
+      mrp: r.mrp ?? r.price,
+      price: r.price,
+      quantity: r.quantity,
+    }));
+
+    setLoading(true);
+
+    try {
+      const res = await j("/api/orders/quick-checkout", "POST", payload);
+      if (res.success) {
+        setCart({});
+        setShowCart(false);
+        addToast("✅ Order placed successfully!", "success");
+      } else {
+        addToast(`❌ Error: ${res.message || "Something went wrong"}`, "error");
+      }
+    } catch (err) {
+      console.error(err);
+      addToast("❌ Failed to place order. Try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   }
-}
-
-
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-orange-50 via-white to-red-50 pb-24">
@@ -118,7 +121,7 @@ async function placeOrder() {
 
         {/* Product Grid */}
         <div className="grid gap-6 sm:gap-8 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
+          {filteredProducts.map((p) => (
             <div
               key={p.id}
               className="group flex flex-col rounded-xl overflow-hidden bg-white border border-gray-100 shadow hover:shadow-xl transition-all duration-300"
@@ -151,13 +154,6 @@ async function placeOrder() {
             </div>
           ))}
         </div>
-
-        {/* Message
-        {message && (
-          <p className="mt-6 text-center text-lg font-medium text-red-600">
-            {message}
-          </p>
-        )} */}
 
         {/* Cart Section */}
         <div className="hidden md:block mt-14">
@@ -192,9 +188,7 @@ async function placeOrder() {
                       >
                         −
                       </button>
-                      <span className="font-semibold text-gray-700">
-                        {it.quantity}
-                      </span>
+                      <span className="font-semibold text-gray-700">{it.quantity}</span>
                       <button
                         onClick={() => add(it)}
                         className="px-2 py-1 bg-green-500 text-white rounded font-bold"
@@ -219,79 +213,8 @@ async function placeOrder() {
           </div>
         </div>
 
-        {/* Floating Cart (Mobile) */}
-        {items.length > 0 && (
-          <button
-            onClick={() => setShowCart(true)}
-            className="md:hidden fixed bottom-16 right-5 px-5 py-3 rounded-full bg-gradient-to-r from-red-600 to-orange-500 text-white text-sm font-semibold shadow-xl z-40"
-          >
-            Cart ({items.length})
-          </button>
-        )}
-
-        {/* Mobile Cart Drawer */}
-        {showCart && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end z-50">
-            <div className="w-full bg-white rounded-t-2xl shadow-2xl p-4 max-h-[70vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-red-600">🛒 Your Cart</h3>
-                <button
-                  onClick={() => setShowCart(false)}
-                  className="text-gray-500 text-lg"
-                >
-                  ✕
-                </button>
-              </div>
-              {items.map((it) => (
-                <div
-                  key={it.id}
-                  className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mb-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={Default}
-                      alt={it.name}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                    <div>
-                      <p className="font-medium text-gray-800">{it.name}</p>
-                      <p className="text-sm text-gray-600">
-                        ₹ {it.price} × {it.quantity}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => remove(it)}
-                      className="px-2 py-1 bg-red-500 text-white rounded font-bold"
-                    >
-                      −
-                    </button>
-                    <span className="font-semibold text-gray-700">{it.quantity}</span>
-                    <button
-                      onClick={() => add(it)}
-                      className="px-2 py-1 bg-green-500 text-white rounded font-bold"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <div className="flex justify-between items-center border-t pt-3 mt-3">
-                <p className="text-lg font-bold text-gray-800">Total: ₹ {total}</p>
-                <button
-                  onClick={placeOrder}
-                  disabled={loading}
-                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold shadow hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Placing..." : "Place Order"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
         <ToastContainer />
+      </div>
     </div>
   );
 }
