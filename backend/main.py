@@ -45,21 +45,6 @@ def price_list_url():
     url = blob.generate_signed_url(version='v4', expiration=3600, method='GET')
     return jsonify({"url": url})
 
-
-# @app.get("/api/orders/apply-coupon")
-# def apply_coupon():
-#     coupon_code = request.args.get("code")
-#     data = request.json or {}
-#     if not coupon_code:
-#         return jsonify({"error": "Coupon code is required"}), 400
-
-#     result = validate_coupon(coupon_code, data)
-#     if not result.get("valid"):
-#         return jsonify({"error": result.get("error", "Invalid coupon code")}), 400
-#     # Remove 'valid' key from response
-#     response = {k: v for k, v in result.items() if k != "valid"}
-#     return jsonify(response)
-
 @app.get("/api/orders/apply-coupon")
 def apply_coupon():
     coupon_code = request.args.get("code")
@@ -75,7 +60,6 @@ def apply_coupon():
     response = {k: v for k, v in result.items() if k != "valid"}
     return jsonify(response)
 
-    
 
 @app.post("/api/orders/quick-checkout")
 def quick_checkout():
@@ -108,14 +92,36 @@ def quick_checkout():
         content_type='application/json'
     )
 
-    # Email PDF
-    emailed = send_order_pdf_to_admin(data, pdf)
+    # Send email to admin and customer
+    emailed_admin = send_order_pdf_to_admin(
+        order=data,
+        pdf_bytes=pdf
+    )
+    emailed_customer = False
+    if data.get("customer_email"):
+        emailed_customer = send_order_pdf_to_admin(
+            recipient=data["customer_email"],
+            order=data,
+            pdf_bytes=pdf,
+            is_customer=True
+        )
+
+    # Send WhatsApp message (optional)
+    # whatsapp_sent = False
+    # if data.get("customer_phone"):
+    #     whatsapp_sent = send_order_via_whatsapp(
+    #         phone_number=data["customer_phone"],
+    #         order=data
+    #     )
 
     return jsonify({
         "order_id": order_id,
-        "emailed": emailed,
+        "emailed_admin": emailed_admin,
+        "emailed_customer": emailed_customer,
+        # "whatsapp_sent": whatsapp_sent,
         "order_pdf": pdf_url
     })
+
 
 
 @app.post("/api/enquiry")
