@@ -1,10 +1,38 @@
-import { useState } from "react";
-import { j } from "../../api";
+import React, { useState } from "react";
 import type { Product } from "../../types";
+import { j } from "../../api";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  IconButton,
+  TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  DialogActions,
+  InputAdornment,
+} from "@mui/material";
+
+import {
+  Edit,
+  Delete,
+  PictureAsPdf,
+  GridOn,
+  Search,
+} from "@mui/icons-material";
+
 interface ProductListProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
@@ -15,23 +43,31 @@ export default function ProductList({ products, setProducts, token }: ProductLis
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<Partial<Product>>({});
   const [file, setFile] = useState<File | null>(null);
+  const [page, setPage] = useState(0);
+  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search state
+  const rowsPerPage = 15;
+
+  // Filtered products based on search
+  const filteredProducts = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.category && p.category.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
     setFile(selectedFile);
-    if (selectedFile) {
-      setForm({ ...form, image_url: URL.createObjectURL(selectedFile) });
-    }
+    if (selectedFile) setForm({ ...form, image_url: URL.createObjectURL(selectedFile) });
   };
 
   // Update product
-  async function updateProduct() {
+  const updateProduct = async () => {
     if (!editingProduct) return;
 
     let image_url = form.image_url;
     if (file) {
-      const meta = await j("/api/admin/upload-url", "POST", { file: file }, token);
+      const meta = await j("/api/admin/upload-url", "POST", { file }, token);
       await fetch(meta.upload_url, {
         method: "PUT",
         headers: { "Content-Type": "application/octet-stream" },
@@ -42,42 +78,35 @@ export default function ProductList({ products, setProducts, token }: ProductLis
 
     const payload = { ...form, image_url };
     await j(`/api/admin/products/${editingProduct.id}`, "PUT", payload, token);
-
     setProducts(products.map((p) => (p.id === editingProduct.id ? { ...p, ...payload } : p)));
-
     setEditingProduct(null);
     setFile(null);
     setForm({});
-  }
+  };
 
-  // Remove product
-  async function removeProduct(id: string) {
+  // Delete product
+  const removeProduct = async (id: string) => {
     await j(`/api/admin/products/${id}`, "DELETE", {}, token);
     setProducts(products.filter((p) => p.id !== id));
-  }
-  // ✅ Export Products → PDF
+  };
+
+  // Export PDF
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text(" Products List", 14, 20);
-
+    doc.text("Products List", 14, 20);
     autoTable(doc, {
       startY: 30,
       head: [["Name", "Price (₹)", "Category"]],
-      body: products.map((p) => [p.name, p.price, p.category || "-"]),
+      body: filteredProducts.map((p) => [p.name, p.price, p.category || "-"]),
     });
-
     doc.save("products.pdf");
   };
 
-  // ✅ Export Products → Excel
+  // Export Excel
   const exportExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(
-      products.map((p) => ({
-        Name: p.name,
-        Price: p.price,
-        Category: p.category || "-",
-      }))
+      filteredProducts.map((p) => ({ Name: p.name, Price: p.price, Category: p.category || "-" }))
     );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
@@ -85,216 +114,143 @@ export default function ProductList({ products, setProducts, token }: ProductLis
     saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "products.xlsx");
   };
 
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
 
   return (
-    <div className="p-4 md:p-8 bg-gradient-to-br from-red-50 via-yellow-50 to-orange-50 min-h-screen w-full">
-      <h2 className="text-3xl md:text-4xl font-bold text-red-700 mb-6">Products</h2>
+    <div className="p-4">
+      <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Products</h2>
 
-      {/* Export Buttons */}
-      <div className="flex gap-3">
-        <button
-          onClick={exportPDF}
-          className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium shadow hover:scale-105 transition"
-        >
-          📄 Export PDF
-        </button>
-        <button
-          onClick={exportExcel}
-          className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow hover:scale-105 transition"
-        >
-          📊 Export Excel
-        </button>
+      {/* Search & Export */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <TextField
+          placeholder="Search by name or category..."
+          variant="outlined"
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <div className="flex gap-2">
+          <Button variant="contained" color="error" startIcon={<PictureAsPdf />} onClick={exportPDF}>
+            Export PDF
+          </Button>
+          <Button variant="contained" color="success" startIcon={<GridOn />} onClick={exportExcel}>
+            Export Excel
+          </Button>
+        </div>
       </div>
 
+      {/* Table */}
+      <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+        <Table stickyHeader>
+          <TableHead sx={{ backgroundColor: "#f0f0f0" }}>
+            <TableRow>
+              <TableCell className="font-semibold">Name & Image</TableCell>
+              <TableCell className="font-semibold">MRP</TableCell>
+              <TableCell className="font-semibold">Price</TableCell>
+              <TableCell className="font-semibold">Category</TableCell>
+              <TableCell align="center" className="font-semibold">
+                Actions
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredProducts
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((p) => (
+                <TableRow key={p.id} hover>
+                  <TableCell sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {p.image_url && (
+                      <img
+                        src={p.image_url}
+                        alt={p.name}
+                        className="w-12 h-12 object-cover rounded border border-gray-200"
+                      />
+                    )}
+                    {p.name}
+                  </TableCell>
+                  <TableCell>{p.mrp}</TableCell>
+                  <TableCell>{p.price}</TableCell>
+                  <TableCell>{p.category || "-"}</TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      color="primary"
+                      onClick={() => {
+                        setEditingProduct(p);
+                        setForm(p);
+                      }}
+                    >
+                      <Edit />
+                    </IconButton>
+                    <IconButton color="error" onClick={() => removeProduct(p.id)}>
+                      <Delete />
+                    </IconButton>
+                    <IconButton color="secondary">
+                      {/* <Visibility /> */}
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block overflow-x-auto w-full">
-        <table className="w-full border-collapse rounded-xl overflow-hidden shadow-lg">
-          <thead className="bg-red-100 text-gray-800 uppercase text-sm">
-            <tr>
-              <th className="py-3 px-6 text-left">Image & Name</th>
-              <th className="py-3 px-6 text-left">MRP</th>
-              <th className="py-3 px-6 text-left">Price</th>
-              <th className="py-3 px-6 text-left">Category</th>
-              <th className="py-3 px-6 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-700">
-            {products.map((p) => (
-              <tr
-                key={p.id}
-                className="bg-white hover:shadow-lg transition-all transform hover:scale-[1.01] border-b border-gray-200"
-              >
-                <td className="py-4 px-6 flex items-center gap-4">
-                  {p.image_url && (
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="w-16 h-16 rounded-lg object-cover shadow-sm"
-                    />
-                  )}
-                  <span className="font-semibold">{p.name}</span>
-                </td>
-                <td className="py-4 px-6">{p.mrp}</td>
-                <td className="py-4 px-6">{p.price}</td>
-                <td className="py-4 px-6">{p.category}</td>
-                <td className="py-4 px-6 flex justify-center gap-2">
-                  <button
-                    onClick={() => {
-                      setEditingProduct(p);
-                      setForm(p);
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => removeProduct(p.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                  >
-                    Delete
-                  </button>
-                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden flex flex-col gap-4">
-        {products.map((p) => (
-          <div
-            key={p.id}
-            className="bg-white shadow-lg rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4"
-          >
-            {p.image_url && (
-              <img
-                src={p.image_url}
-                alt={p.name}
-                className="w-full sm:w-24 h-24 rounded-lg object-cover"
-              />
-            )}
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-800">{p.name}</h3>
-              <p className="text-gray-600 mt-1">MRP: {p.mrp}</p>
-              <p className="text-gray-600 mt-1">Price: {p.price}</p>
-              <p className="text-gray-600 mt-1">Category: {p.category}</p>
-            </div>
-            <div className="flex gap-2 mt-3 sm:mt-0">
-              <button
-                onClick={() => {
-                  setEditingProduct(p);
-                  setForm(p);
-                }}
-                className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => removeProduct(p.id)}
-                className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      <TablePagination
+        component="div"
+        count={filteredProducts.length}
+        page={page}
+        onPageChange={handleChangePage}
+        rowsPerPage={rowsPerPage}
+        rowsPerPageOptions={[rowsPerPage]}
+      />
 
       {/* Edit Modal */}
-      {editingProduct && (
-        <div className="fixed inset-0 flex justify-center items-center z-50">
-          {/* Correct translucent overlay */}
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-            style={{ pointerEvents: "auto" }}
-          ></div>
-
-          {/* Modal content */}
-          <div className="relative bg-white p-6 rounded-xl w-80 md:w-96 z-10 flex flex-col gap-4 shadow-xl">
-            <h3 className="text-xl font-bold mb-2 text-red-700">Edit Product</h3>
-
-            {/* Name */}
-            <div className="flex flex-col">
-              <label className="text-gray-700 text-sm mb-1">Name</label>
-              <input
-                type="text"
-                value={form.name || ""}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-              />
-            </div>
-
-            {/* Category */}
-            <div className="flex flex-col">
-              <label className="text-gray-700 text-sm mb-1">Category</label>
-              <input
-                type="text"
-                value={form.category || ""}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-              />
-            </div>
-
-            {/* MRP */}
-            <div className="flex flex-col">
-              <label className="text-gray-700 text-sm mb-1">MRP</label>
-              <input
-                type="number"
-                value={form.mrp || 0}
-                onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })}
-                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-              />
-            </div>
-
-            {/* Price */}
-            <div className="flex flex-col">
-              <label className="text-gray-700 text-sm mb-1">Price</label>
-              <input
-                type="number"
-                value={form.price || 0}
-                onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                className="border rounded px-3 py-2 focus:ring-2 focus:ring-red-300 focus:outline-none"
-              />
-            </div>
-
-            {/* File Upload */}
-            <div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="border rounded px-3 py-2 w-full"
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-2 mt-2">
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setForm({});
-                  setFile(null);
-                }}
-                className="px-3 py-1 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updateProduct}
-                className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <Dialog open={!!editingProduct} onClose={() => setEditingProduct(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Edit Product</DialogTitle>
+        <DialogContent className="flex flex-col gap-4 mt-2">
+          <TextField
+            label="Name"
+            value={form.name || ""}
+            fullWidth
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <TextField
+            label="Category"
+            value={form.category || ""}
+            fullWidth
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+          />
+          <TextField
+            label="MRP"
+            type="number"
+            value={form.mrp || 0}
+            fullWidth
+            onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })}
+          />
+          <TextField
+            label="Price"
+            type="number"
+            value={form.price || 0}
+            fullWidth
+            onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+          />
+          <input type="file" accept="image/*" onChange={handleFileChange} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditingProduct(null)}>Cancel</Button>
+          <Button variant="contained" onClick={updateProduct}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

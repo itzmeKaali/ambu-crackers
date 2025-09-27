@@ -10,6 +10,10 @@ interface Coupon {
   theme: string;
 }
 
+interface AdminOfferProps {
+  token: string;
+}
+
 const COLORS = [
   "from-pink-100 to-pink-300",
   "from-blue-100 to-blue-300",
@@ -21,12 +25,11 @@ const COLORS = [
   "from-teal-100 to-teal-300",
 ];
 
-export default function AdminOffer() {
+export default function AdminOffer({ token }: AdminOfferProps) {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [title, setTitle] = useState("");
   const [discount, setDiscount] = useState<number>(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const token = localStorage.getItem("token");
 
   // Load vouchers
   useEffect(() => {
@@ -63,7 +66,8 @@ export default function AdminOffer() {
         discount_type: "percentage",
         discount_value: discount,
       };
-      const data = await j("/api/vouchers", "POST", payload);
+const data = await j("/api/vouchers", "POST", payload, token);
+
       setCoupons((prev) => [
         ...prev,
         {

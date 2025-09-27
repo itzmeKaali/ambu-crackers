@@ -46,19 +46,35 @@ def price_list_url():
     return jsonify({"url": url})
 
 
+# @app.get("/api/orders/apply-coupon")
+# def apply_coupon():
+#     coupon_code = request.args.get("code")
+#     data = request.json or {}
+#     if not coupon_code:
+#         return jsonify({"error": "Coupon code is required"}), 400
+
+#     result = validate_coupon(coupon_code, data)
+#     if not result.get("valid"):
+#         return jsonify({"error": result.get("error", "Invalid coupon code")}), 400
+#     # Remove 'valid' key from response
+#     response = {k: v for k, v in result.items() if k != "valid"}
+#     return jsonify(response)
+
 @app.get("/api/orders/apply-coupon")
 def apply_coupon():
     coupon_code = request.args.get("code")
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}  # 👈 won’t raise error if no JSON
+
     if not coupon_code:
         return jsonify({"error": "Coupon code is required"}), 400
 
     result = validate_coupon(coupon_code, data)
     if not result.get("valid"):
         return jsonify({"error": result.get("error", "Invalid coupon code")}), 400
-    # Remove 'valid' key from response
+    
     response = {k: v for k, v in result.items() if k != "valid"}
     return jsonify(response)
+
     
 
 @app.post("/api/orders/quick-checkout")

@@ -1,149 +1,48 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { g, j } from "../api";
 import type { Product } from "../types";
 import Select from "react-select";
 import useToast from "../pages/Toast/useToast";
+import { FaPlus, FaMinus, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { ShoppingCart } from "lucide-react";
 
 // ---------------- Subcomponents ---------------- //
-function Field({
-  id,
-  label,
-  children,
-  error,
-}: {
-  id: string;
-  label: string;
-  children: React.ReactNode;
-  error?: string;
-}) {
+function Field({ id, label, children, error }: { id: string; label: string; children: React.ReactNode; error?: string }) {
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="block text-sm font-semibold text-red-700 mb-2"
-      >
-        {label}
-      </label>
+    <div className="mb-4">
+      <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
       <div>{children}</div>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
 
-function ProductRow({
-  r,
-  setQty,
-  formatCurrency,
-}: {
-  r: any;
-  setQty: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-  formatCurrency: (n: number) => string;
-}) {
+function ProductCardMobile({ r, setQty, formatCurrency }: { r: any; setQty: React.Dispatch<React.SetStateAction<Record<string, number>>>; formatCurrency: (n: number) => string; }) {
   return (
-    <>
-      {/* 🖥️ Desktop Table Row */}
-      <tr
-        key={r.id}
-        className="hidden md:table-row group hover:bg-gradient-to-r hover:from-yellow-50 hover:to-red-50 transition-colors duration-200 border-b border-gray-200"
-      >
-        <td className="px-4 py-4 whitespace-nowrap">
-          <img
-            src={r.image_url || "/default-image.jpg"}
-            alt={r.name}
-            className="w-16 h-16 object-cover rounded-lg"
-          />
-        </td>
-        <td className="px-4 py-4 whitespace-nowrap">
-          <div className="text-sm font-semibold text-gray-900">{r.name}</div>
-        </td>
-        <td className="px-4 py-4 text-sm text-gray-500 line-through">
-          {formatCurrency(r.mrp)}
-        </td>
-        <td className="px-4 py-4 text-sm font-bold text-green-600">
-          {formatCurrency(r.price)}
-        </td>
-        <td className="px-4 py-4">
+    <article className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center space-x-4">
+      <img src={r.image_url || "/default-image.jpg"} alt={r.name} className="w-24 h-24 object-cover rounded-lg flex-shrink-0" />
+      <div className="flex-grow">
+        <h4 className="text-base font-bold text-gray-800 mb-1 leading-tight">{r.name}</h4>
+        <div className="flex items-baseline space-x-2 mb-2">
+          <span className="text-sm text-gray-400 line-through">{formatCurrency(r.mrp)}</span>
+          <span className="text-lg font-extrabold text-red-600">{formatCurrency(r.price)}</span>
+        </div>
+        <div className="flex items-center justify-between mt-2">
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() =>
-                setQty((q) => ({ ...q, [r.id]: Math.max(0, (q[r.id] || 0) - 1) }))
-              }
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-red-100 text-red-600 font-bold text-lg shadow-sm hover:bg-red-200 hover:scale-105 transition"
-            >
-              −
+            <button onClick={() => setQty((q) => ({ ...q, [r.id]: Math.max(0, (q[r.id] || 0) - 1) }))}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors">
+              <FaMinus className="text-sm" />
             </button>
-            <span className="px-4 py-1 min-w-[45px] text-center rounded-md border border-gray-200 bg-gray-50 text-gray-800 font-semibold">
-              {r.quantity}
-            </span>
-            <button
-              onClick={() =>
-                setQty((q) => ({ ...q, [r.id]: (q[r.id] || 0) + 1 }))
-              }
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-green-100 text-green-600 font-bold text-lg shadow-sm hover:bg-green-200 hover:scale-105 transition"
-            >
-              +
+            <span className="px-3 py-1 min-w-[35px] text-center rounded-md border border-gray-200 bg-white text-gray-800 font-medium text-sm">{r.quantity}</span>
+            <button onClick={() => setQty((q) => ({ ...q, [r.id]: (q[r.id] || 0) + 1 }))}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors">
+              <FaPlus className="text-sm" />
             </button>
           </div>
-        </td>
-        <td className="px-4 py-4 text-sm font-extrabold text-red-700">
-          {formatCurrency(r.amount)}
-        </td>
-      </tr>
-    </>
-  );
-}
-
-function ProductCard({
-  r,
-  setQty,
-  formatCurrency,
-}: {
-  r: any;
-  setQty: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-  formatCurrency: (n: number) => string;
-}) {
-  return (
-    <article className="relative p-5 rounded-2xl shadow-lg border border-red-100 bg-gradient-to-br from-white via-red-50 to-orange-50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-      {r.mrp > r.price && (
-        <div className="absolute -top-2 -left-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-tr-xl rounded-bl-2xl shadow">
-          SAVE ₹{r.mrp - r.price}
-        </div>
-      )}
-      <img
-        src={r.image_url || "/default-image.jpg"}
-        alt={r.name}
-        className="w-full h-40 object-cover rounded-xl mb-3"
-      />
-      <h4 className="text-lg font-extrabold text-gray-800 mb-2">{r.name}</h4>
-      <div className="flex items-baseline gap-3 mb-4">
-        <span className="text-sm text-gray-400 line-through">{formatCurrency(r.mrp)}</span>
-        <span className="text-2xl font-bold text-red-600 drop-shadow-sm">{formatCurrency(r.price)}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() =>
-              setQty((q) => ({ ...q, [r.id]: Math.max(0, (q[r.id] || 0) - 1) }))
-            }
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-gradient-to-br from-red-100 to-red-200 text-red-600 font-bold text-2xl shadow hover:scale-110 active:scale-95 transition"
-          >
-            −
-          </button>
-          <span className="px-5 py-2 min-w-[55px] text-center rounded-full border border-gray-300 bg-white text-gray-900 font-bold text-lg shadow-sm">
-            {r.quantity}
-          </span>
-          <button
-            onClick={() =>
-              setQty((q) => ({ ...q, [r.id]: (q[r.id] || 0) + 1 }))
-            }
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-green-200 text-green-600 font-bold text-2xl shadow hover:scale-110 active:scale-95 transition"
-          >
-            +
-          </button>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-gray-500">Amount</div>
-          <div className="text-xl font-extrabold text-orange-700">{formatCurrency(r.amount)}</div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">Amount</div>
+            <div className="text-lg font-bold text-gray-700">{formatCurrency(r.amount)}</div>
+          </div>
         </div>
       </div>
     </article>
@@ -151,17 +50,22 @@ function ProductCard({
 }
 
 // ---------------- Main Component ---------------- //
+const ITEMS_PER_PAGE = 10;
+
 export default function QuickCheckout() {
   const [products, setProducts] = useState<Product[]>([]);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [cust, setCust] = useState({ name: "", email: "", phone: "", address: "" });
+  const [couponCode, setCouponCode] = useState("");
+  const [discount, setDiscount] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [category, setCategory] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showCart, setShowCart] = useState(false);
   const { addToast, ToastContainer } = useToast();
 
-  // Fetch products
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -172,170 +76,327 @@ export default function QuickCheckout() {
     return () => { mounted = false; };
   }, []);
 
-  // Get dynamic category options
   const categories = Array.from(new Set(products.map((p) => p.category))).filter(Boolean);
-  const categoryOptions = [{ value: "", label: "All Categories" }, ...categories.map((c) => ({ value: c, label: c }))];
+  const categoryOptions = useMemo(() => [
+    { value: "", label: "All Categories" },
+    ...categories.map((c) => ({ value: c, label: c })),
+  ], [categories]);
 
-  // Filter products
-  const filteredProducts = category ? products.filter((p) => p.category === category) : products;
+  const filteredProducts = useMemo(() => (
+    category ? products.filter((p) => p.category === category) : products
+  ), [products, category]);
 
-  // Prepare rows and total
-  const rows = filteredProducts.map((p) => ({
+  const rows = useMemo(() => filteredProducts.map((p) => ({
     ...p,
     quantity: qty[p.id] || 0,
     amount: (qty[p.id] || 0) * p.price,
-  }));
-  const total = rows.reduce((s, r) => s + (r.amount || 0), 0);
+  })), [filteredProducts, qty]);
+
+  const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+  const paginatedRows = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return rows.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [rows, currentPage]);
+
+  const totalAmount = rows.reduce((s, r) => s + (r.amount || 0), 0);
+  // const subtotal = totalAmount; // before discount
   const formatCurrency = (n: number) => `₹${n.toFixed(2)}`;
 
-  // Validation
+  const selectedRows = rows.filter(r => r.quantity > 0); // Only selected items in cart
+
+  useEffect(() => { setCurrentPage(1); }, [category]);
+  const goToNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+
   function validate() {
     const newErrors: Record<string, string> = {};
     if (!cust.name.trim()) newErrors.name = "Name is required.";
     if (!cust.email.trim()) newErrors.email = "Email is required.";
-    else if (!/\S+@\S+\.\S+/.test(cust.email)) newErrors.email = "Enter a valid email.";
+    else if (!/\S+@\S+\.\S+/.test(cust.email)) newErrors.email = "Enter valid email.";
     if (!cust.phone.trim()) newErrors.phone = "Phone is required.";
-    else if (!/^[0-9]{10}$/.test(cust.phone)) newErrors.phone = "Enter a valid 10-digit phone number.";
+    else if (!/^[0-9]{10}$/.test(cust.phone)) newErrors.phone = "Enter valid 10-digit phone.";
     if (!cust.address.trim()) newErrors.address = "Address is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
-  // Place Order
   async function placeOrder() {
     if (!validate()) return;
-
-    const items = rows.filter((r) => r.quantity > 0).map((r) => ({
-      id: r.id,
-      name: r.name,
-      mrp: r.mrp,
-      price: r.price,
-      quantity: r.quantity,
+    const items = selectedRows.map((r) => ({
+      id: r.id, name: r.name, mrp: r.mrp, price: r.price, quantity: r.quantity
     }));
+    if (!items.length) { addToast("Add at least one product.", "warning"); return; }
 
-    if (!items.length) {
-      addToast("Please add at least one product.", "warning");
-      return;
-    }
-
-    const payload = { customer_name: cust.name, customer_email: cust.email, customer_phone: cust.phone, customer_address: cust.address, items, total };
+    const payload = {
+      customer_name: cust.name, customer_email: cust.email, customer_phone: cust.phone,
+      customer_address: cust.address, items, total: totalAmount - discount, coupon_code: couponCode
+    };
 
     try {
       setPlacing(true);
       const res = await j("/api/orders/quick-checkout", "POST", payload);
       addToast(`✅ Order placed! ID: ${res?.order_id || "-"}`, "success");
-      setQty({});
-      setCust({ name: "", email: "", phone: "", address: "" });
-      setErrors({});
-    } catch (err) {
-      console.error(err);
-      addToast("❌ Failed to place order. Please try again.", "error");
-    } finally {
-      setPlacing(false);
-    }
+      setQty({}); setCust({ name: "", email: "", phone: "", address: "" }); setErrors({}); setDiscount(0); setCouponCode("");
+    } catch {
+      addToast("❌ Failed to place order. Try again.", "error");
+    } finally { setPlacing(false); setShowCart(false); }
   }
 
+async function applyCoupon() {
+  alert("Applying coupon...");
+  if (!couponCode.trim()) {
+    setDiscount(0);
+    addToast("Enter a coupon code", "info");
+    return;
+  }
+
+  try {
+    const res = await j(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode)}`, "GET");
+   console.log("new one ",res)
+    // if (res && res.discount_value) {
+    //   setDiscount(newDiscount);
+    //   addToast(`✅ Coupon applied! Discount: ₹${newDiscount.toFixed(2)}`, "success");
+    // } else {
+    //   setDiscount(0);
+    //   addToast("❌ Invalid coupon", "error");
+    // }
+  } catch (err) {
+    console.error("Coupon API error:", err);
+    setDiscount(0);
+    addToast("❌ Failed to apply coupon", "error");
+  }
+}
+
+
   return (
-    <main className="min-h-screen p-6 bg-gradient-to-br from-red-50 via-yellow-50 to-orange-100 flex flex-col items-center">
-      <div className="w-full max-w-6xl space-y-6">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-red-700 tracking-tight">Quick Checkout</h1>
+    <main className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col items-center font-sans">
+      <div className="w-full max-w-7xl space-y-8">
+        <h1 className="text-4xl font-extrabold text-gray-900 text-center">Quick Checkout</h1>
 
-        {/* Category Filter */}
-        <div className="max-w-sm">
-          <Select
-            options={categoryOptions}
-            value={categoryOptions.find((opt) => opt.value === category)}
-            onChange={(opt) => setCategory(opt?.value || "")}
-            classNamePrefix="react-select"
-            styles={{
-              control: (base) => ({ ...base, borderRadius: "0.75rem", borderColor: "#f87171", padding: "4px" }),
-            }}
-          />
-        </div>
-
+        {/* Category + Products */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Customer Details */}
-          <div className="lg:col-span-1 bg-white/90 p-6 rounded-3xl shadow-md border border-red-50">
-            <h2 className="text-lg font-bold text-red-600 mb-4">Customer Details</h2>
-            <form onSubmit={(e) => { e.preventDefault(); placeOrder(); }} className="flex flex-col gap-4">
-              <Field id="name" label="Full name" error={errors.name}>
-                <input
-                  id="name"
-                  aria-invalid={!!errors.name}
-                  className={`w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-300 shadow-sm ${errors.name ? "border-red-500" : "border-red-200"}`}
-                  placeholder="e.g. M. Kumar"
-                  value={cust.name}
-                  onChange={(e) => setCust((s) => ({ ...s, name: e.target.value }))}
+          <div className="lg:col-span-3 bg-white rounded-2xl shadow-xl p-6 relative">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold text-gray-800">Products</h2>
+              <div className="w-full sm:w-64">
+                <Select
+                  options={categoryOptions}
+                  value={categoryOptions.find((opt) => opt.value === category)}
+                  onChange={(opt) => setCategory(opt?.value || "")}
+                  classNamePrefix="react-select"
+                  styles={{ control: (base) => ({ ...base, borderRadius: "0.75rem", borderColor: "#e5e7eb", padding: "4px", boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)" }) }}
                 />
-              </Field>
-
-              <Field id="email" label="Email" error={errors.email}>
-                <input
-                  id="email"
-                  type="email"
-                  aria-invalid={!!errors.email}
-                  className={`w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-300 shadow-sm ${errors.email ? "border-red-500" : "border-red-200"}`}
-                  placeholder="you@example.com"
-                  value={cust.email}
-                  onChange={(e) => setCust((s) => ({ ...s, email: e.target.value }))}
-                />
-              </Field>
-
-              <Field id="phone" label="Phone" error={errors.phone}>
-                <input
-                  id="phone"
-                  inputMode="numeric"
-                  aria-invalid={!!errors.phone}
-                  className={`w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-300 shadow-sm ${errors.phone ? "border-red-500" : "border-red-200"}`}
-                  placeholder="10-digit phone"
-                  value={cust.phone}
-                  onChange={(e) => setCust((s) => ({ ...s, phone: e.target.value }))}
-                />
-              </Field>
-
-              <Field id="address" label="Address" error={errors.address}>
-                <textarea
-                  id="address"
-                  aria-invalid={!!errors.address}
-                  className={`w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-300 shadow-sm resize-none min-h-[90px] ${errors.address ? "border-red-500" : "border-red-200"}`}
-                  placeholder="Street, city, pincode"
-                  value={cust.address}
-                  onChange={(e) => setCust((s) => ({ ...s, address: e.target.value }))}
-                />
-              </Field>
-
-              <button type="submit" disabled={placing} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-400 text-white font-bold shadow-lg hover:scale-[1.02] transform transition">
-                {placing ? "Placing order..." : "Place Order"}
-              </button>
-            </form>
-          </div>
-
-          {/* Products */}
-          <div className="lg:col-span-2 space-y-6">
-            {loading && <div className="text-center text-gray-600">Loading products…</div>}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:hidden">
-              {rows.map((r) => <ProductCard key={r.id} r={r} setQty={setQty} formatCurrency={formatCurrency} />)}
+              </div>
             </div>
 
-            <div className="hidden md:block overflow-x-auto rounded-2xl shadow-lg border border-gray-200 bg-white">
-              <table className="min-w-full text-sm md:text-base">
-                <thead>
-                  <tr className="bg-gradient-to-r from-red-200 via-yellow-100 to-red-100 text-red-800">
-                    <th className="px-4 py-3 text-left font-semibold tracking-wide">Product</th>
-                    <th className="px-4 py-3 text-left font-semibold tracking-wide">MRP</th>
-                    <th className="px-4 py-3 text-left font-semibold tracking-wide">Price</th>
-                    <th className="px-4 py-3 text-left font-semibold tracking-wide">Qty</th>
-                    <th className="px-4 py-3 text-left font-semibold tracking-wide">Amount</th>
+            {loading && <div className="text-center text-gray-600 py-10">Loading products…</div>}
+            {!loading && rows.length === 0 && <div className="text-center text-gray-500 py-10">No products found.</div>}
+
+            {/* Mobile View - Product Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:hidden gap-4 mb-6">
+              {paginatedRows.map((r) => (
+                <ProductCardMobile key={r.id} r={r} setQty={setQty} formatCurrency={formatCurrency} />
+              ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider rounded-tl-lg">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">MRP</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider rounded-tr-lg">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {rows.map((r) => <ProductRow key={r.id} r={r} setQty={setQty} formatCurrency={formatCurrency} />)}
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {paginatedRows.map((r) => (
+                    <tr key={r.id} className="hover:bg-blue-50 transition-colors duration-200">
+                      <td className="px-6 py-4 flex items-center space-x-3">
+                        <img src={r.image_url || "/default-image.jpg"} alt={r.name} className="w-16 h-16 object-cover rounded-md shadow-sm border border-gray-100" />
+                        <div className="font-medium text-gray-900 text-base">{r.name}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 line-through">{formatCurrency(r.mrp)}</td>
+                      <td className="px-6 py-4 text-base font-semibold text-green-600">{formatCurrency(r.price)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setQty((q) => ({ ...q, [r.id]: Math.max(0, (q[r.id] || 0) - 1) }))}
+                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors duration-150 transform hover:scale-105"
+                            aria-label="Decrease quantity"
+                          >
+                            <FaMinus className="text-xs" />
+                          </button>
+                          <span className="px-3 py-1 min-w-[40px] text-center rounded-md border border-gray-300 bg-gray-50 text-gray-800 font-semibold text-sm shadow-inner">
+                            {r.quantity}
+                          </span>
+                          <button
+                            onClick={() => setQty((q) => ({ ...q, [r.id]: (q[r.id] || 0) + 1 }))}
+                            className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors duration-150 transform hover:scale-105"
+                            aria-label="Increase quantity"
+                          >
+                            <FaPlus className="text-xs" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-lg font-extrabold text-gray-800">{formatCurrency(r.amount)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center space-x-4 mt-6">
+                <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-transform">
+                  <FaChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-gray-700">Page {currentPage} of {totalPages}</span>
+                <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-transform">
+                  <FaChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </section>
+
+        {/* Floating Cart Button */}
+        {selectedRows.length > 0 && (
+          <button
+            onClick={() => setShowCart(true)}
+            className="fixed bottom-5 left-5 bg-gradient-to-r from-red-600 to-orange-500 text-white p-4 rounded-full shadow-lg z-50 animate-bounce flex items-center justify-center transform hover:scale-110 transition-transform"
+            aria-label={`View cart with ${selectedRows.length} items`}
+          >
+            <ShoppingCart size={22} />
+            <span className="absolute -top-1 -right-1 bg-white text-red-600 rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold border border-red-300">
+              {selectedRows.length}
+            </span>
+          </button>
+        )}
+
+        {/* Full-page Cart Overlay */}
+        {showCart && (
+          <div className="fixed inset-0 z-50 bg-white overflow-y-auto min-h-screen p-6">
+            <div className="max-w-5xl mx-auto space-y-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-red-600 flex items-center space-x-3">
+                  <ShoppingCart size={30} /> <span>Your Cart</span>
+                </h2>
+                <button onClick={() => setShowCart(false)} className="text-gray-500 hover:text-gray-700 text-2xl font-bold p-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close cart">✕</button>
+              </div>
+
+              {selectedRows.length === 0 ? (
+                <div className="text-center text-gray-500 py-20 text-lg">
+                  <p className="mb-4">Your cart is empty.</p>
+                  <button onClick={() => setShowCart(false)} className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center justify-center mx-auto">
+                    <FaChevronLeft className="mr-2" /> Continue Shopping
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Mobile Cards for Cart */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden mb-6">
+                    {selectedRows.map((r) => <ProductCardMobile key={r.id} r={r} setQty={setQty} formatCurrency={formatCurrency} />)}
+                  </div>
+
+                  {/* Desktop Table for Cart */}
+                  <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-lg shadow-sm mb-8">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gradient-to-r from-red-50 to-orange-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider rounded-tl-lg">Product</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">MRP</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Price</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quantity</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider rounded-tr-lg">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {selectedRows.map((r) => (
+                          <tr key={r.id} className="hover:bg-red-50 transition-colors duration-200">
+                            <td className="px-6 py-4 flex items-center space-x-3">
+                              <img src={r.image_url || "/default-image.jpg"} alt={r.name} className="w-16 h-16 object-cover rounded-md shadow-sm border border-gray-100" />
+                              <div className="font-medium text-gray-900 text-base">{r.name}</div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 line-through">{formatCurrency(r.mrp)}</td>
+                            <td className="px-6 py-4 text-base font-semibold text-red-600">{formatCurrency(r.price)}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => setQty((q) => ({ ...q, [r.id]: Math.max(0, (q[r.id] || 0) - 1) }))}
+                                  className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors duration-150 transform hover:scale-105"
+                                  aria-label="Decrease quantity"
+                                >
+                                  <FaMinus className="text-xs" />
+                                </button>
+                                <span className="px-3 py-1 min-w-[40px] text-center rounded-md border border-gray-300 bg-gray-50 text-gray-800 font-semibold text-sm shadow-inner">
+                                  {r.quantity}
+                                </span>
+                                <button
+                                  onClick={() => setQty((q) => ({ ...q, [r.id]: (q[r.id] || 0) + 1 }))}
+                                  className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors duration-150 transform hover:scale-105"
+                                  aria-label="Increase quantity"
+                                >
+                                  <FaPlus className="text-xs" />
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-lg font-extrabold text-gray-800">{formatCurrency(r.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Customer Info */}
+                  <div className="bg-white rounded-2xl shadow-xl p-6 space-y-4 border border-blue-100">
+                    <h3 className="text-2xl font-bold text-gray-800 border-b pb-3 mb-4 flex items-center space-x-2">
+                      <span>Customer Information & Checkout</span>
+                    </h3>
+                    <form onSubmit={(e) => { e.preventDefault(); placeOrder(); }}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <Field id="name" label="Full Name" error={errors.name}>
+                          <input value={cust.name} onChange={(e) => setCust((c) => ({ ...c, name: e.target.value }))}
+                            className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all ${errors.name ? "border-red-500" : "border-gray-300"}`} />
+                        </Field>
+                        <Field id="email" label="Email" error={errors.email}>
+                          <input type="email" value={cust.email} onChange={(e) => setCust((c) => ({ ...c, email: e.target.value }))}
+                            className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all ${errors.email ? "border-red-500" : "border-gray-300"}`} />
+                        </Field>
+                        <Field id="phone" label="Phone Number" error={errors.phone}>
+                          <input type="tel" value={cust.phone} onChange={(e) => setCust((c) => ({ ...c, phone: e.target.value }))}
+                            className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all ${errors.phone ? "border-red-500" : "border-gray-300"}`} />
+                        </Field>
+                        <Field id="coupon" label="Coupon Code (Optional)">
+                          <div className="flex gap-2">
+                            <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)}
+                              className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all border-gray-300" />
+                            <button type="button" onClick={applyCoupon} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+                          </div>
+                        </Field>
+                      </div>
+                      <Field id="address" label="Shipping Address" error={errors.address}>
+                        <textarea value={cust.address} onChange={(e) => setCust((c) => ({ ...c, address: e.target.value }))}
+                          rows={3} className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all ${errors.address ? "border-red-500" : "border-gray-300"}`} />
+                      </Field>
+
+                      <div className="flex justify-between items-center mt-6 pt-5 border-t border-gray-200">
+                        <span className="text-xl font-bold text-gray-800">Total Amount:</span>
+                        <span className="text-3xl font-extrabold text-indigo-700">{formatCurrency(totalAmount - discount)}</span>
+                      </div>
+
+                      <button type="submit" disabled={placing} className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-bold text-lg shadow-lg hover:scale-[1.01] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                        {placing ? "Placing Order..." : "Place Order Now"}
+                      </button>
+                    </form>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         <ToastContainer />
       </div>

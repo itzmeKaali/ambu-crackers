@@ -4,7 +4,7 @@ import type { Product } from "../../types";
 import * as XLSX from "xlsx";
 import exampleFile from "../../assets/exampule-formet.xlsx";
 import CreatableSelect from "react-select/creatable";
-
+import { CloudArrowUpIcon, DocumentArrowUpIcon } from "@heroicons/react/24/solid";
 
 function ProductForm({ token, products, setProducts }: any) {
   const [form, setForm] = useState<Partial<Product>>({ is_active: true });
@@ -20,31 +20,21 @@ function ProductForm({ token, products, setProducts }: any) {
 
   useEffect(() => {
     if (products && products.length > 0) {
-      const dynamicCats = Array.from(
-        new Set(products.map((p: Product) => p.category))
-      ) as string[];
+      const dynamicCats = Array.from(new Set(products.map((p: Product) => p.category))) as string[];
       setCategories(dynamicCats);
-    } else {
-      setCategories([]);
-    }
+    } else setCategories([]);
   }, [products]);
-
-
-
-
-
-
 
   /** -------- SINGLE IMAGE UPLOAD -------- **/
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
-    setPreview(selectedFile ? URL.createObjectURL(selectedFile) : null);
+    const file = e.target.files?.[0] || null;
+    setPreview(file ? URL.createObjectURL(file) : null);
     setImageUrl(null);
-    if (!selectedFile) return;
+    if (!file) return;
 
     try {
       const formData = new FormData();
-      formData.append("file", selectedFile);
+      formData.append("file", file);
 
       const res = await fetch("/api/admin/upload-url", {
         method: "POST",
@@ -52,10 +42,7 @@ function ProductForm({ token, products, setProducts }: any) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Upload failed");
-      }
+      if (!res.ok) throw new Error("Upload failed");
 
       const data = await res.json();
       setImageUrl(data.public_url);
@@ -106,9 +93,9 @@ function ProductForm({ token, products, setProducts }: any) {
 
   /** -------- BULK UPLOAD -------- **/
   const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
-    setBulkFile(selectedFile);
-    setBulkFileName(selectedFile ? selectedFile.name : "");
+    const file = e.target.files?.[0] || null;
+    setBulkFile(file);
+    setBulkFileName(file ? file.name : "");
     setBulkErrors([]);
   };
 
@@ -125,10 +112,6 @@ function ProductForm({ token, products, setProducts }: any) {
 
     for (const row of rows) {
       try {
-        let image_url = row.ImageURL || "";
-        // If image file path is provided locally (can implement drag-drop per row if needed)
-        // Example: you can extend this to handle Base64 or local files in the future
-
         const payload = {
           name: row.Name,
           mrp: parseFloat(row.MRP),
@@ -136,7 +119,7 @@ function ProductForm({ token, products, setProducts }: any) {
           category: row.Category,
           description: row.Description || "",
           is_active: row.Active !== undefined ? !!row.Active : true,
-          image_url,
+          image_url: row.ImageURL || "",
         };
 
         if (!payload.name || !payload.category || isNaN(payload.price) || isNaN(payload.mrp)) {
@@ -146,7 +129,7 @@ function ProductForm({ token, products, setProducts }: any) {
 
         const newProduct = await j("/api/admin/products", "POST", payload, token);
         newProducts.push(newProduct);
-      } catch (err) {
+      } catch {
         errors.push(`Failed row: ${JSON.stringify(row)}`);
       }
     }
@@ -156,128 +139,131 @@ function ProductForm({ token, products, setProducts }: any) {
     setBulkFile(null);
     setBulkFileName("");
 
-    if (errors.length === 0) {
-      alert("All products uploaded successfully!");
-    } else {
-      alert(`Upload completed with ${errors.length} errors!`);
-    }
+    if (errors.length === 0) alert("All products uploaded successfully!");
+    else alert(`Upload completed with ${errors.length} errors!`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-10">
-      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-6 sm:p-8 md:p-10 flex flex-col gap-8">
-        <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 border-b pb-3">
-          ➕ Add Product or Bulk Upload
-        </h2>
+    <div className="w-full p-4 sm:p-6 md:p-8">
+      <div className="max-w-5xl mx-auto flex flex-col gap-8">
 
-        {/* SINGLE PRODUCT FORM */}
-        <form
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveProduct();
-          }}
-        >
-          <div className="flex flex-col gap-4">
-            <input
-              placeholder="Product Name"
-              value={form.name || ""}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className={`rounded-lg border px-4 py-2 focus:ring-2 focus:ring-green-400 ${errors.name ? "border-red-500" : "border-gray-300"
-                }`}
-            />
-            <textarea
-              placeholder="Description"
-              value={form.description || ""}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="rounded-lg border px-4 py-2 min-h-[80px] focus:ring-2 focus:ring-green-400"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="number"
-                placeholder="MRP"
-                value={form.mrp || ""}
-                onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) })}
-                className={`rounded-lg border px-4 py-2 ${errors.mrp ? "border-red-500" : "border-gray-300"
-                  }`}
-              />
-              <input
-                type="number"
-                placeholder="Price"
-                value={form.price || ""}
-                onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) })}
-                className={`rounded-lg border px-4 py-2 ${errors.price ? "border-red-500" : "border-gray-300"
-                  }`}
-              />
-            </div>
-            <CreatableSelect
-              options={categories.map((c) => ({ value: c, label: c }))}
-              value={form.category ? { value: form.category, label: form.category } : null}
-              onChange={(selected) => setForm({ ...form, category: selected?.value || "" })}
-              onCreateOption={(newCategory) => {
-                // add new category dynamically
-                setCategories((prev) => [...prev, newCategory]);
-                setForm({ ...form, category: newCategory });
-              }}
-              className="react-select-container"
-              classNamePrefix="react-select"
-            />
-            {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
+        {/* Single Product Form */}
+        <div className="flex flex-col gap-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 border-b pb-2">
+            Add Product
+          </h2>
 
-            <label className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                checked={!!form.is_active}
-                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                className="w-4 h-4 accent-green-500"
-              />
-              <span className="text-gray-700 text-sm">Active</span>
-            </label>
-          </div>
-
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-full sm:w-64 h-64 border-2 border-dashed rounded-xl flex items-center justify-center relative overflow-hidden">
-              {preview ? (
-                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <p className="text-gray-400 text-center text-sm px-2">
-                  Drag & Drop or Click to Upload
-                </p>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-            </div>
-            {errors.image_url && <p className="text-red-500 text-sm mt-1">{errors.image_url}</p>}
-          </div>
-
-          <button
-            type="submit"
-            className="md:col-span-2 px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition mt-2"
+          <form
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveProduct();
+            }}
           >
-            ✅ Save Product
-          </button>
-        </form>
+            <div className="flex flex-col gap-4">
+              <input
+                placeholder="Product Name"
+                value={form.name || ""}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className={`w-full rounded-md border px-3 py-2 focus:ring-2 focus:ring-green-400 ${errors.name ? "border-red-500" : "border-gray-300"}`}
+              />
 
-        {/* BULK UPLOAD */}
-        <div className="flex flex-col gap-4 bg-gray-50 rounded-xl shadow-md p-5 md:p-6">
-          <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">📦 Bulk Upload Products (Excel)</h3>
+              <textarea
+                placeholder="Description"
+                value={form.description || ""}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full rounded-md border px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-green-400"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  placeholder="MRP"
+                  value={form.mrp || ""}
+                  onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) })}
+                  className={`w-full rounded-md border px-3 py-2 ${errors.mrp ? "border-red-500" : "border-gray-300"}`}
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={form.price || ""}
+                  onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) })}
+                  className={`w-full rounded-md border px-3 py-2 ${errors.price ? "border-red-500" : "border-gray-300"}`}
+                />
+              </div>
+
+              <CreatableSelect
+                options={categories.map((c) => ({ value: c, label: c }))}
+                value={form.category ? { value: form.category, label: form.category } : null}
+                onChange={(selected) => setForm({ ...form, category: selected?.value || "" })}
+                onCreateOption={(newCategory) => {
+                  setCategories((prev) => [...prev, newCategory]);
+                  setForm({ ...form, category: newCategory });
+                }}
+                className="react-select-container"
+                classNamePrefix="react-select"
+              />
+              {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
+
+              <label className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  checked={!!form.is_active}
+                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                  className="w-4 h-4 accent-green-500"
+                />
+                <span className="text-gray-700 text-sm">Active</span>
+              </label>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-full sm:w-64 h-64 border-2 border-dashed rounded-md flex items-center justify-center relative overflow-hidden">
+                {preview ? (
+                  <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-gray-400 text-sm">
+                    <CloudArrowUpIcon className="w-8 h-8 mb-2" />
+                    <span>Upload Image</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </div>
+              {errors.image_url && <p className="text-red-500 text-sm mt-1">{errors.image_url}</p>}
+            </div>
+
+            <button
+              type="submit"
+              className="md:col-span-2 px-6 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 transition mt-2"
+            >
+              Add Product
+            </button>
+          </form>
+        </div>
+
+        {/* Bulk Upload */}
+        <div className="flex flex-col gap-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 border-b pb-2">
+            Bulk Upload Products
+          </h2>
 
           <a
             href={exampleFile}
             download="example_products.xlsx"
-            className="inline-block mb-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm font-medium"
           >
-            📄 Download Example Format
+            Download Template
           </a>
 
-          <label className="relative flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:border-blue-400 transition">
-            <p className="text-gray-500 text-sm text-center">
+          <label className="relative flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-md cursor-pointer hover:border-blue-400 transition">
+            <DocumentArrowUpIcon className="w-8 h-8 mb-1 text-gray-400" />
+            <span className="text-gray-500 text-sm text-center">
               Drag & Drop or Click to Select Excel File
-            </p>
+            </span>
             <input
               type="file"
               accept=".xlsx, .xls, .csv"
@@ -290,13 +276,13 @@ function ProductForm({ token, products, setProducts }: any) {
 
           <button
             onClick={uploadBulkProducts}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium mt-2"
+            className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
           >
-            🚀 Upload Bulk Products
+            Upload Products
           </button>
 
           {bulkErrors.length > 0 && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm mt-2">
+            <div className="bg-red-100 text-red-700 p-3 rounded-md text-sm mt-2">
               <ul className="list-disc ml-5">
                 {bulkErrors.map((err, i) => (
                   <li key={i}>{err}</li>
@@ -306,7 +292,7 @@ function ProductForm({ token, products, setProducts }: any) {
           )}
 
           <p className="text-gray-500 text-sm mt-1">
-            Excel columns: Name, MRP, Price, Category, Description, ImageURL, Active
+            Columns: Name, MRP, Price, Category, Description, ImageURL, Active
           </p>
         </div>
       </div>

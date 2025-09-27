@@ -13,14 +13,13 @@ import Header from "./components/header/header";
 import DisclaimerWrapper from "./pages/alertmessage";
 import { FaWhatsapp } from "react-icons/fa";
 
-function App() {
+function AppLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith("/admin");
 
-  // WhatsApp Button Component
+  // WhatsApp Button (hide on admin)
   function WhatsAppButton() {
-    const location = useLocation();
-
-    // Hide button on admin page
-    if (location.pathname === "/admin") return null;
+    if (isAdminPage) return null;
 
     return (
       <a
@@ -29,41 +28,88 @@ function App() {
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3 py-3 rounded-full bg-green-500 shadow-xl transition-all duration-300 hover:bg-green-600 hover:scale-110 group"
       >
-        <span className="text-white text-2xl"> <FaWhatsapp /> </span>
+        <span className="text-white text-2xl">
+          <FaWhatsapp />
+        </span>
       </a>
     );
   }
 
+  // If admin page → return children directly (no header/footer)
+  if (isAdminPage) {
+    return <>{children}</>;
+  }
+
+  // Default layout (with header/footer)
   return (
-
-    <BrowserRouter>
-
+    <div className="flex flex-col min-h-screen">
       <FireworksCursor />
-      <WhatsAppButton /> {/* Will auto-hide on /admin */}
+      <WhatsAppButton />
 
-      <div className="flex flex-col min-h-screen">
-        {/* Header */}
-        <Header />
+      {/* Header */}
+      <Header />
 
-        {/* Main Content */}
-        <main className="flex-1 flex justify-center items-start px-xs-4 mt-[80px] ">
-          <DisclaimerWrapper>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/shop" element={<Shop />} />
-              <Route path="/quick-checkout" element={<QuickCheckout />} />
-              <Route path="/price-list" element={<PriceList />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/admin" element={<Admin />} />
-            </Routes>
-          </DisclaimerWrapper>
+      {/* Main Content */}
+      <main className="flex-1 flex justify-center items-start px-xs-4 mt-[80px]">
+        <DisclaimerWrapper>{children}</DisclaimerWrapper>
+      </main>
 
-        </main>
+      {/* Footer */}
+      <Footer />
+    </div>
+  );
+}
 
-        {/* Footer */}
-        <Footer />
-      </div>
-    </BrowserRouter >
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Pages */}
+        <Route
+          path="/"
+          element={
+            <AppLayout>
+              <Home />
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/shop"
+          element={
+            <AppLayout>
+              <Shop />
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/quick-checkout"
+          element={
+            <AppLayout>
+              <QuickCheckout />
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/price-list"
+          element={
+            <AppLayout>
+              <PriceList />
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/contact"
+          element={
+            <AppLayout>
+              <Contact />
+            </AppLayout>
+          }
+        />
+
+        {/* Admin Page → opens without layout */}
+        <Route path="/admin" element={<Admin />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
