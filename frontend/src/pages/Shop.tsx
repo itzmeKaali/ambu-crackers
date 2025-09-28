@@ -102,7 +102,7 @@ export default function Shop() {
     try {
       setLoading(true);
       const res = await j("/api/orders/quick-checkout", "POST", payload);
-      addToast(`✅ Order placed! ID: ${res?.order_id || "-"}`, "success");
+      addToast(`✅ Order #${res?.order_id || "-"} confirmed! Email sent (check spam folder if needed)`, "success");
       setCart({});
       setCustomer({ name: "", email: "", phone: "", address: "", coupon: "" });
       setErrors({});

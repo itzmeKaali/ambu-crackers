@@ -45,9 +45,9 @@ def render_order_pdf(order):
         
         p.drawString(40, y, item.get("name", "Item")[:38])
         p.drawRightString(330, y, str(qty))
-        p.drawRightString(400, y, f"₹{mrp:.2f}")
-        p.drawRightString(480, y, f"₹{price:.2f}")
-        p.drawRightString(550, y, f"₹{amt:.2f}")
+        p.drawRightString(400, y, f"Rs.{mrp:.2f}")
+        p.drawRightString(480, y, f"Rs.{price:.2f}")
+        p.drawRightString(550, y, f"Rs.{amt:.2f}")
         y -= 14
         
         if y < 120:  # Leave more space for totals section
@@ -62,7 +62,7 @@ def render_order_pdf(order):
     # Show subtotal
     p.setFont("Helvetica", 11)
     p.drawRightString(480, y, "Subtotal:")
-    p.drawRightString(550, y, f"₹{subtotal:.2f}")
+    p.drawRightString(550, y, f"Rs.{subtotal:.2f}")
     y -= 16
     
     # Get the final total from order (which includes discount)
@@ -75,7 +75,7 @@ def render_order_pdf(order):
         
         p.setFont("Helvetica", 10)
         p.drawRightString(480, y, f"Discount ({discount_percentage:.0f}% off):")
-        p.drawRightString(550, y, f"-₹{discount_amount:.2f}")
+        p.drawRightString(550, y, f"-Rs.{discount_amount:.2f}")
         y -= 16
         
         # Show coupon code if available
@@ -88,13 +88,13 @@ def render_order_pdf(order):
     # Final total
     p.setFont("Helvetica-Bold", 12)
     p.drawRightString(480, y, "Total:")
-    p.drawRightString(550, y, f"₹{final_total:.2f}")
+    p.drawRightString(550, y, f"Rs.{final_total:.2f}")
     
     # Add a note if discount was applied
     if final_total < subtotal:
         y -= 20
         p.setFont("Helvetica", 9)
-        p.drawString(40, y, f"You saved ₹{subtotal - final_total:.2f} with your coupon!")
+        p.drawString(40, y, f"You saved Rs.{subtotal - final_total:.2f} with your coupon!")
     
     p.showPage()
     p.save()
