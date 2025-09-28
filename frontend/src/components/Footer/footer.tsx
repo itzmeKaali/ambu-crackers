@@ -33,7 +33,7 @@ function Footer() {
             </div>
             <div className="flex items-center gap-3">
               <FaEnvelope className="text-black/70 min-w-4" />
-              <a href="mailto:contact@ambucrackers.com" className="hover:text-black transition-colors">contact@ambucrackers.com</a>
+              <a href="mailto:ambucrackers@gmail.com" className="hover:text-black transition-colors">contact ambucrackers@gmail.com</a>
             </div>
           </div>
         </div>

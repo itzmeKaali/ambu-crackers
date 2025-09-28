@@ -142,30 +142,38 @@ export default function QuickCheckout() {
     } finally { setPlacing(false); setShowCart(false); }
   }
 
-async function applyCoupon() {
-  alert("Applying coupon...");
+ const applyCoupon = async () => {
   if (!couponCode.trim()) {
     setDiscount(0);
-    addToast("Enter a coupon code", "info");
+    addToast("Enter a coupon code.", "info");
     return;
   }
 
   try {
-    const res = await j(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode)}`, "GET");
-   console.log("new one ",res)
-    // if (res && res.discount_value) {
-    //   setDiscount(newDiscount);
-    //   addToast(`✅ Coupon applied! Discount: ₹${newDiscount.toFixed(2)}`, "success");
-    // } else {
-    //   setDiscount(0);
-    //   addToast("❌ Invalid coupon", "error");
-    // }
-  } catch (err) {
-    console.error("Coupon API error:", err);
+    // Call your existing backend endpoint with query param
+    const response = await g(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode.trim())}`);
+    
+    if (response && typeof response.discount_value === "number" && response.discount_value > 0) {
+      const discountAmount = (totalAmount * response.discount_value) / 100;
+      setDiscount(discountAmount);
+      addToast(`✅ Coupon applied! You got ${response.discount_value}% off.`, "success");
+    } else {
+      setDiscount(0);
+      addToast("❌ Invalid coupon code.", "error");
+    }
+  } catch (error: any) {
     setDiscount(0);
-    addToast("❌ Failed to apply coupon", "error");
+    // Handle 400 response from backend
+    if (error?.response?.data?.error) {
+      addToast(`❌ ${error.response.data.error}`, "error");
+    } else {
+      addToast("❌ Failed to apply coupon. Please try again.", "error");
+    }
+    console.error("Coupon apply error:", error);
   }
-}
+};
+
+
 
 
   return (
@@ -373,6 +381,7 @@ async function applyCoupon() {
                           <div className="flex gap-2">
                             <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)}
                               className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all border-gray-300" />
+
                             <button type="button" onClick={applyCoupon} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
                           </div>
                         </Field>

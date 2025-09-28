@@ -48,13 +48,13 @@ export default function DisclaimerWrapper({ children }: { children: React.ReactN
                 <span className="font-medium"> 48 hours</span> via WhatsApp or phone.
               </p>
               <p>
-                <strong>Rain or Ambu Crackers</strong> 
-                (LICENSE NO: <strong>45/2024</strong>, GST: <strong>33ABHFR2800B1ZV</strong>) 
+                <strong> Ambu Crackers</strong> 
+                (LICENSE NO: <strong>45/2024</strong>, GST: <strong>33AAYFD1505F1ZM</strong>) 
                 fully complies with the <strong>Explosives Act</strong>. 
                 Delivery is arranged exclusively through <span className="font-medium text-green-700">authorized transport services</span>.
               </p>
               <p className="text-xs text-neutral-500 text-center pt-2">
-                © 2025 Rain or Shine Sivakasi Crackers · Powered by Monkworks
+                © 2025  Ambu Crackers · Powered by Monkworks
               </p>
             </section>
 
