@@ -57,7 +57,9 @@ export default function QuickCheckout() {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [cust, setCust] = useState({ name: "", email: "", phone: "", address: "" });
   const [couponCode, setCouponCode] = useState("");
-  const [discount, setDiscount] = useState(0);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -98,8 +100,9 @@ export default function QuickCheckout() {
     return rows.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [rows, currentPage]);
 
-  const totalAmount = rows.reduce((s, r) => s + (r.amount || 0), 0);
-  // const subtotal = totalAmount; // before discount
+  const subtotal = rows.reduce((s, r) => s + (r.amount || 0), 0);
+  const discountAmount = (subtotal * discountPercentage) / 100;
+  const totalAmount = subtotal - discountAmount;
   const formatCurrency = (n: number) => `₹${n.toFixed(2)}`;
 
   const selectedRows = rows.filter(r => r.quantity > 0); // Only selected items in cart
@@ -129,52 +132,56 @@ export default function QuickCheckout() {
 
     const payload = {
       customer_name: cust.name, customer_email: cust.email, customer_phone: cust.phone,
-      customer_address: cust.address, items, total: totalAmount - discount, coupon_code: couponCode
+      customer_address: cust.address, items, total: totalAmount, coupon_code: appliedCouponCode
     };
 
     try {
       setPlacing(true);
       const res = await j("/api/orders/quick-checkout", "POST", payload);
       addToast(`✅ Order placed! ID: ${res?.order_id || "-"}`, "success");
-      setQty({}); setCust({ name: "", email: "", phone: "", address: "" }); setErrors({}); setDiscount(0); setCouponCode("");
+      setQty({}); 
+      setCust({ name: "", email: "", phone: "", address: "" }); 
+      setErrors({}); 
+      setDiscountPercentage(0);
+      setAppliedCouponCode(null);
+      setCouponCode("");
     } catch {
       addToast("❌ Failed to place order. Try again.", "error");
     } finally { setPlacing(false); setShowCart(false); }
   }
 
- const applyCoupon = async () => {
-  if (!couponCode.trim()) {
-    setDiscount(0);
-    addToast("Enter a coupon code.", "info");
-    return;
-  }
-
-  try {
-    // Call your existing backend endpoint with query param
-    const response = await g(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode.trim())}`);
-    
-    if (response && typeof response.discount_value === "number" && response.discount_value > 0) {
-      const discountAmount = (totalAmount * response.discount_value) / 100;
-      setDiscount(discountAmount);
-      addToast(`✅ Coupon applied! You got ${response.discount_value}% off.`, "success");
-    } else {
-      setDiscount(0);
-      addToast("❌ Invalid coupon code.", "error");
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      addToast("Please enter a coupon code", "info");
+      return;
     }
-  } catch (error: any) {
-    setDiscount(0);
-    // Handle 400 response from backend
-    if (error?.response?.data?.error) {
-      addToast(`❌ ${error.response.data.error}`, "error");
-    } else {
-      addToast("❌ Failed to apply coupon. Please try again.", "error");
+
+    setApplyingCoupon(true);
+    try {
+      const response = await g(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode.trim())}`);
+      
+      if (response && typeof response.discount_value === "number" && response.discount_value > 0) {
+        setDiscountPercentage(response.discount_value);
+        setAppliedCouponCode(couponCode.trim());
+        addToast(`✅ Coupon applied! You got ${response.discount_value}% off.`, "success");
+      } else {
+        addToast("❌ Invalid coupon code.", "error");
+      }
+    } catch (error: any) {
+      console.error("Coupon apply error:", error);
+      addToast("❌ Invalid coupon code", "error");
+    } finally {
+      setApplyingCoupon(false);
     }
-    console.error("Coupon apply error:", error);
+  };
+
+  // Remove applied coupon
+  function removeCoupon() {
+    setDiscountPercentage(0);
+    setAppliedCouponCode(null);
+    setCouponCode("");
+    addToast("Coupon removed", "info");
   }
-};
-
-
-
 
   return (
     <main className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col items-center font-sans">
@@ -378,12 +385,35 @@ export default function QuickCheckout() {
                             className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all ${errors.phone ? "border-red-500" : "border-gray-300"}`} />
                         </Field>
                         <Field id="coupon" label="Coupon Code (Optional)">
-                          <div className="flex gap-2">
-                            <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)}
-                              className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all border-gray-300" />
-
-                            <button type="button" onClick={applyCoupon} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
-                          </div>
+                          {appliedCouponCode ? (
+                            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <span className="text-green-700 font-medium">✅ {appliedCouponCode} applied ({discountPercentage}% off)</span>
+                              <button 
+                                type="button" 
+                                onClick={removeCoupon}
+                                className="ml-auto px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <input 
+                                value={couponCode} 
+                                onChange={(e) => setCouponCode(e.target.value)}
+                                placeholder="Enter coupon code"
+                                className="flex-1 rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all border-gray-300" 
+                              />
+                              <button 
+                                type="button" 
+                                onClick={applyCoupon}
+                                disabled={applyingCoupon || !couponCode.trim()}
+                                className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {applyingCoupon ? "Applying..." : "Apply"}
+                              </button>
+                            </div>
+                          )}
                         </Field>
                       </div>
                       <Field id="address" label="Shipping Address" error={errors.address}>
@@ -391,13 +421,30 @@ export default function QuickCheckout() {
                           rows={3} className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all ${errors.address ? "border-red-500" : "border-gray-300"}`} />
                       </Field>
 
-                      <div className="flex justify-between items-center mt-6 pt-5 border-t border-gray-200">
-                        <span className="text-xl font-bold text-gray-800">Total Amount:</span>
-                        <span className="text-3xl font-extrabold text-indigo-700">{formatCurrency(totalAmount - discount)}</span>
+                      {/* Order Summary */}
+                      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 className="font-semibold text-gray-700 mb-3">Order Summary</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{formatCurrency(subtotal)}</span>
+                          </div>
+                          {discountPercentage > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Discount ({discountPercentage}% off):</span>
+                              <span>-{formatCurrency(discountAmount)}</span>
+                            </div>
+                          )}
+                          <hr className="my-2" />
+                          <div className="flex justify-between font-bold text-lg">
+                            <span>Total:</span>
+                            <span className="text-indigo-700">{formatCurrency(totalAmount)}</span>
+                          </div>
+                        </div>
                       </div>
 
                       <button type="submit" disabled={placing} className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-bold text-lg shadow-lg hover:scale-[1.01] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-                        {placing ? "Placing Order..." : "Place Order Now"}
+                        {placing ? "Placing Order..." : `Place Order - ${formatCurrency(totalAmount)}`}
                       </button>
                     </form>
                   </div>

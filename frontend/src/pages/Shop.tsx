@@ -75,38 +75,6 @@ export default function Shop() {
     return Object.keys(errs).length === 0;
   }
 
- const applyCoupon = async () => {
-  if (!couponCode.trim()) {
-    setDiscount(0);
-    addToast("Enter a coupon code.", "info");
-    return;
-  }
-
-  try {
-    // Call your existing backend endpoint with query param
-    const response = await g(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode.trim())}`);
-    
-    if (response && typeof response.discount_value === "number" && response.discount_value > 0) {
-      const discountAmount = (total * response.discount_value) / 100;
-      setDiscount(discountAmount);
-      addToast(`✅ Coupon applied! You got ${response.discount_value}% off.`, "success");
-    } else {
-      setDiscount(0);
-      addToast("❌ Invalid coupon code.", "error");
-    }
-  } catch (error: any) {
-    setDiscount(0);
-    // Handle 400 response from backend
-    if (error?.response?.data?.error) {
-      addToast(`❌ ${error.response.data.error}`, "error");
-    } else {
-      addToast("❌ Failed to apply coupon. Please try again.", "error");
-    }
-    console.error("Coupon apply error:", error);
-  }
-};
-
-
   async function placeOrder() {
     if (!validateCustomer()) return;
 
@@ -160,10 +128,14 @@ export default function Shop() {
   }));
 
   // Coupon/discount state for overlay
-  const [discount, setDiscount] = useState(0);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
 
   // Coupon code for overlay
   const [couponCode, setCouponCode] = useState("");
+
+  // Coupon applying state
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   // Placing order state for overlay
   const [placing, setPlacing] = useState(false);
@@ -189,10 +161,16 @@ export default function Shop() {
         address: customer.address,
       });
       setOverlayErrors({});
-      setCouponCode(customer.coupon || "");
-      setDiscount(0);
+      setCouponCode("");
+      setDiscountPercentage(0);
+      setAppliedCouponCode(null);
     }
   }, [showCart]);
+
+  // Calculate subtotal and discount amount
+  const subtotal = selectedRows.reduce((sum, r) => sum + r.amount, 0);
+  const discountAmount = (subtotal * discountPercentage) / 100;
+  const finalTotal = subtotal - discountAmount;
 
   // Validate overlay customer info
   function validateOverlayCustomer() {
@@ -226,8 +204,8 @@ export default function Shop() {
         price: p.price,
         quantity: p.quantity,
       })),
-      total: selectedRows.reduce((sum, r) => sum + r.amount, 0) - discount,
-      coupon_code: couponCode,
+      total: finalTotal,
+      coupon_code: appliedCouponCode,
     };
     try {
       setPlacing(true);
@@ -236,7 +214,8 @@ export default function Shop() {
       setCart({});
       setOverlayCustomer({ name: "", email: "", phone: "", address: "" });
       setOverlayErrors({});
-      setDiscount(0);
+      setDiscountPercentage(0);
+      setAppliedCouponCode(null);
       setCouponCode("");
       setShowCart(false);
     } catch {
@@ -249,24 +228,35 @@ export default function Shop() {
   // Overlay apply coupon
   async function overlayApplyCoupon() {
     if (!couponCode.trim()) {
-      setDiscount(0);
-      addToast("Enter a coupon code", "info");
+      addToast("Please enter a coupon code", "info");
       return;
     }
+    
+    setApplyingCoupon(true);
     try {
-      // You may need to adjust API params to match backend
-      const res = await j(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode)}`, "GET");
-      if (res && res.discount_value) {
-        setDiscount(res.discount_value);
-        addToast(`✅ Coupon applied! Discount: ₹${res.discount_value.toFixed(2)}`, "success");
+      const response = await g(`/api/orders/apply-coupon?code=${encodeURIComponent(couponCode.trim())}`);
+      
+      if (response && typeof response.discount_value === "number" && response.discount_value > 0) {
+        setDiscountPercentage(response.discount_value);
+        setAppliedCouponCode(couponCode.trim());
+        addToast(`✅ Coupon applied! You got ${response.discount_value}% off.`, "success");
       } else {
-        setDiscount(0);
-        addToast("❌ Invalid coupon", "error");
+        addToast("❌ Invalid coupon code.", "error");
       }
-    } catch (err) {
-      setDiscount(0);
-      addToast("❌ Failed to apply coupon", "error");
+    } catch (error: any) {
+      console.error("Coupon apply error:", error);
+      addToast("❌ Invalid coupon code", "error");
+    } finally {
+      setApplyingCoupon(false);
     }
+  }
+
+  // Remove applied coupon
+  function removeCoupon() {
+    setDiscountPercentage(0);
+    setAppliedCouponCode(null);
+    setCouponCode("");
+    addToast("Coupon removed", "info");
   }
 
   return (
@@ -352,7 +342,6 @@ export default function Shop() {
                 <div className="text-center text-gray-500 py-20 text-lg">
                   <p className="mb-4">Your cart is empty.</p>
                   <button onClick={() => setShowCart(false)} className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center justify-center mx-auto">
-                    {/* You can use an icon here if desired */}
                     Continue Shopping
                   </button>
                 </div>
@@ -434,11 +423,35 @@ export default function Shop() {
                         </div>
                         <div className="mb-4">
                           <label htmlFor="coupon" className="block text-sm font-semibold text-gray-700 mb-2">Coupon Code (Optional)</label>
-                          <div className="flex gap-2">
-                            <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)}
-                              className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all border-gray-300" />
-                            <button type="button" onClick={overlayApplyCoupon} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
-                          </div>
+                          {appliedCouponCode ? (
+                            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <span className="text-green-700 font-medium">✅ {appliedCouponCode} applied ({discountPercentage}% off)</span>
+                              <button 
+                                type="button" 
+                                onClick={removeCoupon}
+                                className="ml-auto px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <input 
+                                value={couponCode} 
+                                onChange={(e) => setCouponCode(e.target.value)}
+                                placeholder="Enter coupon code"
+                                className="flex-1 rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all border-gray-300" 
+                              />
+                              <button 
+                                type="button" 
+                                onClick={overlayApplyCoupon}
+                                disabled={applyingCoupon || !couponCode.trim()}
+                                className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {applyingCoupon ? "Applying..." : "Apply"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="mb-4">
@@ -448,13 +461,30 @@ export default function Shop() {
                         {overlayErrors.address && <p className="mt-1 text-xs text-red-600">{overlayErrors.address}</p>}
                       </div>
 
-                      <div className="flex justify-between items-center mt-6 pt-5 border-t border-gray-200">
-                        <span className="text-xl font-bold text-gray-800">Total Amount:</span>
-                        <span className="text-3xl font-extrabold text-indigo-700">{formatCurrency(selectedRows.reduce((sum, r) => sum + r.amount, 0) - discount)}</span>
+                      {/* Order Summary */}
+                      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 className="font-semibold text-gray-700 mb-3">Order Summary</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{formatCurrency(subtotal)}</span>
+                          </div>
+                          {discountPercentage > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Discount ({discountPercentage}% off):</span>
+                              <span>-{formatCurrency(discountAmount)}</span>
+                            </div>
+                          )}
+                          <hr className="my-2" />
+                          <div className="flex justify-between font-bold text-lg">
+                            <span>Total:</span>
+                            <span className="text-indigo-700">{formatCurrency(finalTotal)}</span>
+                          </div>
+                        </div>
                       </div>
 
                       <button type="submit" disabled={placing} className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-bold text-lg shadow-lg hover:scale-[1.01] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-                        {placing ? "Placing Order..." : "Place Order Now"}
+                        {placing ? "Placing Order..." : `Place Order - ${formatCurrency(finalTotal)}`}
                       </button>
                     </form>
                   </div>
