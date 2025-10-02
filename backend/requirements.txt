@@ -9,4 +9,4 @@ gunicorn
 python-dotenv
 google-cloud-secret-manager
 marshmallow
-
+requests
