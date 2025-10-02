@@ -1,16 +1,15 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { g } from "../api";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Truck, Tags, Sparkles, BadgePercent, Headphones } from "lucide-react";
+import { ShieldCheck, Truck, Tags, Sparkles, BadgePercent, Headphones, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 
 import homese from "../assets/home/home-se.jpg";
 import explore from "../assets/home/one.jpg";
-
-// offer image 
-import Offer1 from '../assets/home/offer-images/combo-offer.jpg';
-import combooffer from '../assets/home/offer-images/combo-offer.jpg';
-import Newone from '../assets/home/offer-images/new-one.jpg';
-import Offer80 from '../assets/home/offer-images/offer-80.jpg';
+import Offer1 from "../assets/home/offer-images/combo-offer.jpg";
+import combooffer from "../assets/home/offer-images/combo-offer.jpg";
+import Newone from "../assets/home/offer-images/new-one.jpg";
+import Offer80 from "../assets/home/offer-images/offer-80.jpg";
 
 const sliderImages = [Offer80, Newone, Offer1, combooffer];
 
@@ -29,13 +28,37 @@ const features = [
   { title: "24/7 Support", text: "We’re here whenever you are.", icon: Headphones },
 ];
 
-export default function HomePro() {
+export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [categories, setCategories] = useState<string[]>([]);
 
+  // Fetch categories
   useEffect(() => {
-    const id = setInterval(() => setCurrentSlide((p) => (p + 1) % sliderImages.length), 4500);
-    return () => clearInterval(id);
+    g("/api/products").then((data) => {
+      if (Array.isArray(data)) {
+        const cats = Array.from(
+          new Set(data.map((p) => p.category).filter((c) => !!c))
+        );
+        setCategories(cats.sort());
+      }
+    });
   }, []);
+
+
+  const trackRef = useRef(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + categories.length) % categories.length);
+  };
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % categories.length);
+  };
+
+  const getTranslateX = () => `translateX(-${currentIndex * 260}px)`; 
+
+
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 text-gray-900">
@@ -48,11 +71,8 @@ export default function HomePro() {
         .marquee-track { animation: marquee 18s linear infinite; }
       `}</style>
 
-    
-
       {/* --- HERO with Video Background --- */}
       <section className="relative isolate h-[75vh] md:h-[85vh] overflow-hidden rounded-b-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.35)]">
-        {/* Background video */}
         <div className="absolute inset-0 -z-10">
           <video
             className="h-full w-full object-cover"
@@ -92,7 +112,6 @@ export default function HomePro() {
                 service. Safe, premium, unforgettable.
               </p>
 
-              {/* Buttons */}
               <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                 <Link
                   to="/shop"
@@ -160,6 +179,84 @@ export default function HomePro() {
         </div>
       </section>
 
+      {/* --- Categories Section --- */}
+     <section className="max-w-7xl mx-auto px-6 md:px-10 mt-16 md:mt-24 relative">
+      <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-2">
+        Shop by <span className="text-red-600">Category</span>
+      </h2>
+      <p className="mt-3 text-center text-gray-600 max-w-2xl mx-auto">
+        Explore our premium cracker categories. Click a card to view products in that category.
+      </p>
+
+      {categories.length === 0 ? (
+        <div className="mt-12 text-center text-gray-400 text-lg">Loading categories...</div>
+      ) : (
+        <div className="mt-12 relative">
+          {/* Left Button */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-3 hover:bg-red-50 transition"
+          >
+            <ChevronLeft className="w-6 h-6 text-red-600" />
+          </button>
+
+          {/* Right Button */}
+          <button
+            onClick={nextSlide}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-3 hover:bg-red-50 transition"
+          >
+            <ChevronRight className="w-6 h-6 text-red-600" />
+          </button>
+
+          {/* Cards Track */}
+          <div className="overflow-hidden">
+            <div
+              ref={trackRef}
+              className="flex gap-6 transition-transform duration-1000 ease-in-out"
+              style={{ transform: getTranslateX() }}
+            >
+              {[...categories, ...categories].map((cat, i) => (
+                <Link
+                  key={`${cat}-${i}`}
+                  to={`/shop?category=${encodeURIComponent(cat)}`}
+                  className="relative flex-shrink-0 w-[160px] sm:w-[180px] md:w-[200px] lg:w-[220px] xl:w-[240px] group bg-gradient-to-br from-orange-100 via-yellow-100 to-red-100 rounded-[2rem] p-6 border border-gray-200 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition text-center overflow-hidden"
+                >
+                  {/* Firework Sparks */}
+                  <motion.div
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 1, 0], scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 + Math.random() * 2 }}
+                  >
+                    {[...Array(8)].map((_, j) => (
+                      <motion.span
+                        key={j}
+                        className="absolute bg-yellow-400 rounded-full w-2 h-2"
+                        style={{
+                          top: `${Math.random() * 100}%`,
+                          left: `${Math.random() * 100}%`,
+                        }}
+                        animate={{ x: [-5, 5, -5], y: [-5, 5, -5] }}
+                        transition={{ repeat: Infinity, duration: 1 + Math.random() }}
+                      />
+                    ))}
+                  </motion.div>
+
+                  {/* Icon Circle */}
+                  <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-orange-200 via-red-200 to-yellow-200 mb-4 border border-orange-300 shadow-inner mx-auto relative overflow-hidden">
+                    <span className="text-3xl font-extrabold text-red-600">{cat[0]}</span>
+                  </div>
+                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">{cat}</h3>
+                  <span className="text-sm text-gray-500">View Products</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+
+
       {/* --- Features --- */}
       <section className="max-w-7xl mx-auto px-6 md:px-10 mt-16 md:mt-24">
         <h2 className="text-3xl md:text-4xl font-extrabold text-center">
@@ -211,11 +308,58 @@ export default function HomePro() {
         </div>
       </section>
 
+      {/* --- Location Section --- */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-10 mt-16 md:mt-24 mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.8 }}
+          className="text-center flex flex-col items-center gap-3"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <MapPin className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-red-600" />
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 leading-snug">
+              Our <span className="text-red-600">Location</span>
+            </h2>
+          </div>
+          <p className="mt-1 sm:mt-2 text-gray-600 max-w-xl mx-auto text-sm sm:text-base md:text-lg leading-relaxed">
+            Visit our store or connect online. Tap the map to get directions instantly.
+          </p>
+        </motion.div>
+
+        <motion.a
+          href="https://www.google.com/maps/dir/?api=1&destination=AmbuCrackers"
+          target="_blank"
+          rel="noopener noreferrer"
+          initial={{ scale: 0.98 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.3 }}
+          className="block mt-6 sm:mt-8 w-full h-[220px] xs:h-[280px] sm:h-[340px] md:h-[440px] rounded-2xl overflow-hidden shadow-lg border border-gray-200 hover:shadow-2xl transition-transform relative"
+        >
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.072245678176!2d79.1337!3d13.0827!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a528dfd2a3d9d7b%3A0x63d0a4b1d1c0ad2c!2sAmbuCrackers!5e0!3m2!1sen!2sin!4v1695657750000!5m2!1sen!2sin"
+            width="100%"
+            height="100%"
+            className="rounded-2xl pointer-events-none"
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          ></iframe>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 pointer-events-none rounded-2xl" />
+        </motion.a>
+      </section>
+
       {/* --- CTA Banner --- */}
       <section className="relative mt-20 mb-16">
         <div
           className="relative max-w-7xl mx-auto h-[300px] sm:h-[380px] md:h-[460px] rounded-3xl overflow-hidden shadow-2xl"
-          style={{ backgroundImage: `url(${explore})`, backgroundSize: "cover", backgroundPosition: "center" }}
+          style={{
+            backgroundImage: `url(${explore})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
         >
           <div className="absolute inset-0 bg-black/55" />
           <div className="relative z-10 h-full w-full flex items-center justify-center p-6">
@@ -235,14 +379,14 @@ export default function HomePro() {
               <motion.div
                 initial={{ scale: 1 }}
                 animate={{ scale: [1, 1.06, 1] }}
-                transition={{ repeat: Infinity, duration: 1.8 }}
+                transition={{ repeat: Infinity, duration: 2.6 }}
                 className="mt-6"
               >
                 <Link
                   to="/shop"
-                  className="inline-flex px-8 py-4 rounded-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 shadow-xl hover:shadow-2xl hover:translate-y-[-1px] transition"
+                  className="inline-flex px-8 py-4 rounded-2xl text-lg font-semibold text-white bg-gradient-to-r from-red-600 to-orange-500 shadow-lg hover:shadow-2xl hover:scale-105 transition"
                 >
-                  Explore Collection
+                  Explore Now
                 </Link>
               </motion.div>
             </motion.div>

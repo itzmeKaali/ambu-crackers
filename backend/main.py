@@ -31,12 +31,20 @@ voucher_collection = db.collection("voucher")
 @app.get("/api/products")
 def list_products():
     cat = request.args.get('category')
-    q = db.collection("products").where("is_active","==",True)
-    if cat: q = q.where("category","==",cat)
-    docs = q.order_by("created_at", direction=firestore.Query.ASCENDING).stream()
+    q = db.collection("products").where("is_active", "==", True)
+    
+    if cat:
+        q = q.where("category", "==", cat)
+
+    # Firestore order_by on category
+    docs = q.order_by("category", direction=firestore.Query.ASCENDING).stream()
+
     out = []
     for d in docs:
-        x = d.to_dict(); x["id"] = d.id; out.append(x)
+        x = d.to_dict()
+        x["id"] = d.id
+        out.append(x)
+
     return jsonify(out)
 
 @app.get("/api/price-list-url")

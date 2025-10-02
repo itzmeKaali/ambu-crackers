@@ -11,7 +11,7 @@ import Admin from "./pages/Admin";
 import Footer from "./components/Footer/footer";
 import Header from "./components/header/header";
 import DisclaimerWrapper from "./pages/alertmessage";
-import { FaWhatsapp } from "react-icons/fa";
+import { FaWhatsapp, FaPhoneAlt } from "react-icons/fa";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -35,6 +35,22 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Phone Call Button (hide on admin)
+  function PhoneButton() {
+    if (isAdminPage) return null;
+
+    return (
+      <a
+        href="tel:7598336499"
+        className="fixed bottom-20 right-6 z-50 flex items-center gap-2 px-3 py-3 rounded-full bg-blue-500 shadow-xl transition-all duration-300 hover:bg-blue-600 hover:scale-110 group"
+      >
+        <span className="text-white text-2xl">
+          <FaPhoneAlt />
+        </span>
+      </a>
+    );
+  }
+
   // If admin page → return children directly (no header/footer)
   if (isAdminPage) {
     return <>{children}</>;
@@ -45,6 +61,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen">
       <FireworksCursor />
       <WhatsAppButton />
+      <PhoneButton />
 
       {/* Header */}
       <Header />
