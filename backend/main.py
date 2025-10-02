@@ -13,7 +13,7 @@ from schema import VoucherCreateSchema, VoucherListSchema
 from db import db
 
 from utils.order_utils import validate_coupon
-from utils.whatsapputils import send_order_confirmation, send_order_shipped
+# from utils.whatsapputils import send_order_confirmation, send_order_shipped
 
 
 app = Flask(__name__)
@@ -127,11 +127,11 @@ def quick_checkout():
             )
 
         # Send WhatsApp message (optional)
-        if data.get("customer_phone") and GUPSHUP_API_KEY:
-            send_order_confirmation(
-                order_id,
-                destination=data["customer_phone"]
-            )
+        # if data.get("customer_phone") and GUPSHUP_API_KEY:
+        #     send_order_confirmation(
+        #         order_id,
+        #         destination=data["customer_phone"]
+        #     )
 
         return jsonify({
             "order_id": order_id,
