@@ -242,6 +242,14 @@ export default function ProductList({ products, setProducts, token }: ProductLis
             fullWidth
             onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
           />
+          <TextField
+            label="Sequence Number"
+            type="number"
+            value={form.sequence_number || 0}
+            fullWidth
+            onChange={(e) => setForm({ ...form, sequence_number: Number(e.target.value) })}
+            helperText="Unique number for ordering products"
+          />
           <input type="file" accept="image/*" onChange={handleFileChange} />
         </DialogContent>
         <DialogActions>

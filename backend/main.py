@@ -38,18 +38,18 @@ voucher_collection = db.collection("voucher")
 # -------- Public --------
 @app.get("/api/products")
 def list_products():
-
     try:
         cat = request.args.get('category')
         q = db.collection("products").where("is_active","==",True)
         if cat: q = q.where("category","==",cat)
-        docs = q.order_by("created_at", direction=firestore.Query.ASCENDING).stream()
+        docs = q.order_by("sequence_number", direction=firestore.Query.ASCENDING).stream()
         out = []
         for d in docs:
             x = d.to_dict(); x["id"] = d.id; out.append(x)
         return jsonify(out)
     except Exception as e:
         return api_error_response(e)
+
 
 @app.get("/api/price-list-url")
 def price_list_url():
@@ -77,7 +77,6 @@ def apply_coupon():
         return jsonify(response)
     except Exception as e:
         return api_error_response(e)
-
 
 
 @app.post("/api/orders/quick-checkout")
@@ -219,17 +218,11 @@ def update_order_status(order_id):
         return api_error_response(e)
 
 
-
 @app.post("/api/admin/products")
 @require_admin
 def create_product():
-    """
-    Create a product with JSON payload, expects 'image_url' from previous upload
-    """
     try:
         doc = request.json or {}
-
-        # Validate name
         name = doc.get("name", "").strip()
         if not name:
             return jsonify({"error": "Product name is required"}), 400
@@ -239,24 +232,52 @@ def create_product():
         if existing:
             return jsonify({"error": "Product with this name already exists"}), 400
 
-        # Convert numeric/boolean fields safely
+        # Convert numeric
         try:
-            if "mrp" in doc:
-                doc["mrp"] = float(doc["mrp"])
-            if "price" in doc:
-                doc["price"] = float(doc["price"])
+            if "mrp" in doc: doc["mrp"] = float(doc["mrp"])
+            if "price" in doc: doc["price"] = float(doc["price"])
         except ValueError:
             return jsonify({"error": "Invalid price/mrp"}), 400
 
         doc["is_active"] = str(doc.get("is_active", "true")).lower() in ("true", "1")
         doc["created_at"] = firestore.SERVER_TIMESTAMP
 
+        # Handle sequence_number
+        seq = doc.get("sequence_number")
+        if seq is None:
+            # default = max + 1
+            last = db.collection("products").order_by("sequence_number", direction=firestore.Query.DESCENDING).limit(1).get()
+            doc["sequence_number"] = (last[0].to_dict()["sequence_number"] + 1) if last else 1
+        else:
+            # shift others if collision
+            shift_products_for_sequence(seq)
+
         ref = db.collection("products").add(doc)[1]
         snap = ref.get()
-
         return jsonify({"id": ref.id, **snap.to_dict()}), 201
     except Exception as e:
         return api_error_response(e)
+
+def shift_products_for_sequence(new_seq, exclude_id=None):
+    products = db.collection("products").order_by("sequence_number").stream()
+    updates = []
+    pos = 1
+    for p in products:
+        if p.id == exclude_id:
+            continue
+        pdata = p.to_dict()
+        if pos == new_seq:
+            pos += 1
+        if pdata.get("sequence_number") != pos:
+            updates.append((p.id, pos))
+        pos += 1
+
+    batch = db.batch()
+    for pid, seq in updates:
+        batch.update(db.collection("products").document(pid), {"sequence_number": seq})
+    batch.commit()
+
+
 
 
 @app.get("/api/admin/orders")
@@ -285,18 +306,17 @@ def orders():
 @require_admin
 def update_product(pid):
     try:
-        fields = ["name", "description", "price", "mrp", "category", "image_url", "is_active"]
+        # include sequence_number in updatable fields
+        fields = ["name", "description", "price", "mrp", "category", "image_url", "is_active", "sequence_number"]
         patch = {k: v for k, v in (request.json or {}).items() if k in fields}
+
+        if not patch:
+            return jsonify({"error": "No valid fields to update"}), 400
 
         # Validate name uniqueness if updated
         if "name" in patch:
             name = patch["name"].strip()
-            existing = (
-                db.collection("products")
-                .where("name", "==", name)
-                .limit(1)
-                .get()
-            )
+            existing = db.collection("products").where("name", "==", name).limit(1).get()
             if existing and existing[0].id != pid:
                 return jsonify({"error": "Another product with this name already exists"}), 400
             patch["name"] = name
@@ -308,24 +328,64 @@ def update_product(pid):
             if "price" in patch:
                 patch["price"] = float(patch["price"])
             if "is_active" in patch:
-                patch["is_active"] = str(patch["is_active"]).lower() in ("true", "1")
+                patch["is_active"] = str(patch["is_active"]).lower() in ("true", "1", "yes")
+            if "sequence_number" in patch:
+                patch["sequence_number"] = int(patch["sequence_number"])
         except ValueError:
             return jsonify({"error": "Invalid numeric/boolean value"}), 400
 
-        db.collection("products").document(pid).update(patch)
+        # Check if product exists
+        doc_ref = db.collection("products").document(pid)
+        doc_snap = doc_ref.get()
+        if not doc_snap.exists:
+            return jsonify({"error": "Product not found"}), 404
+
+        # If sequence_number is updated, shift others
+        if "sequence_number" in patch:
+            new_seq = patch["sequence_number"]
+            shift_products_for_sequence(new_seq, exclude_id=pid)
+
+        # Update product
+        doc_ref.update(patch)
         return jsonify({"id": pid, **patch})
     except Exception as e:
         return api_error_response(e)
+
+
 
 
 @app.delete("/api/admin/products/<pid>")
 @require_admin
 def delete_product(pid):
     try:
-        db.collection('products').document(pid).delete()
-        return jsonify({"deleted": True})
+        doc_ref = db.collection('products').document(pid)
+        doc_snap = doc_ref.get()
+        if not doc_snap.exists:
+            return jsonify({"error": "Product not found"}), 404
+
+        # Get the sequence number of the product being deleted
+        seq_to_delete = doc_snap.to_dict().get("sequence_number")
+
+        # Delete the product
+        doc_ref.delete()
+
+        # Shift sequence_numbers for products after the deleted one
+        if seq_to_delete is not None:
+            products = db.collection("products").order_by("sequence_number").stream()
+            batch = db.batch()
+            for p in products:
+                pdata = p.to_dict()
+                if pdata.get("sequence_number", 0) > seq_to_delete:
+                    batch.update(db.collection("products").document(p.id), {
+                        "sequence_number": pdata.get("sequence_number") - 1
+                    })
+            batch.commit()
+
+        return jsonify({"deleted": True, "id": pid})
     except Exception as e:
         return api_error_response(e)
+
+
 
 
 # --- Voucher API (now under /api/vouchers) ---

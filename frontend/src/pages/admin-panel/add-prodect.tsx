@@ -77,6 +77,7 @@ function ProductForm({ token, products, setProducts }: any) {
       is_active: form.is_active ?? true,
       description: form.description ?? "",
       image_url: imageUrl!,
+      sequence_number: form.sequence_number ?? 1,
     };
 
     try {
@@ -190,6 +191,16 @@ function ProductForm({ token, products, setProducts }: any) {
                   onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) })}
                   className={`w-full rounded-md border px-3 py-2 ${errors.price ? "border-red-500" : "border-gray-300"}`}
                 />
+                <input
+                  type="number"
+                  placeholder="Sequence Number"
+                  value={form.sequence_number || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, sequence_number: parseInt(e.target.value) })
+                  }
+                  className="w-full rounded-md border px-3 py-2 border-gray-300"
+                />
+
               </div>
 
               <CreatableSelect
