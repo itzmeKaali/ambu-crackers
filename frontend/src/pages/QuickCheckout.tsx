@@ -209,7 +209,7 @@ export default function QuickCheckout() {
 
             {/* Mobile View - Product Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:hidden gap-4 mb-6">
-              {paginatedRows.map((r) => (
+              {rows.map((r) => (
                 <ProductCardMobile key={r.id} r={r} setQty={setQty} formatCurrency={formatCurrency} />
               ))}
             </div>
@@ -227,7 +227,7 @@ export default function QuickCheckout() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {paginatedRows.map((r) => (
+                  {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-blue-50 transition-colors duration-200">
                       <td className="px-6 py-4 flex items-center space-x-3">
                         <img src={r.image_url || "/default-image.jpg"} alt={r.name} className="w-16 h-16 object-cover rounded-md shadow-sm border border-gray-100" />
@@ -263,7 +263,7 @@ export default function QuickCheckout() {
               </table>
             </div>
 
-            {totalPages > 1 && (
+            {/*{totalPages > 1 && (
               <div className="flex justify-center items-center space-x-4 mt-6">
                 <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-transform">
                   <FaChevronLeft className="w-4 h-4" />
@@ -273,7 +273,7 @@ export default function QuickCheckout() {
                   <FaChevronRight className="w-4 h-4" />
                 </button>
               </div>
-            )}
+            )}*/}
           </div>
         </section>
 

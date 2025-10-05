@@ -302,6 +302,24 @@ def orders():
     except Exception as e:
         return api_error_response(e)
 
+@app.delete("/api/admin/orders/<order_id>")
+# @require_admin
+def delete_order(order_id):
+    """Delete an order from GCS"""
+    try:
+        blob = orders_bucket.blob(f"orders/{order_id}.json")
+        
+        if not blob.exists():
+            return jsonify({"error": "Order not found"}), 404
+        
+        # Delete the blob
+        blob.delete()
+        
+        return jsonify({"message": "Order deleted successfully", "order_id": order_id}), 200
+        
+    except Exception as e:
+        return api_error_response(e)
+
 @app.put("/api/admin/products/<pid>")
 @require_admin
 def update_product(pid):

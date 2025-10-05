@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { g, j } from "../../api"; // Assuming these are correctly configured
 import { FaExternalLinkAlt, FaFilePdf, FaChevronDown, FaChevronUp, FaSort, FaExclamationTriangle, FaBoxOpen, FaSpinner, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { MoreVertical, Edit, Trash2 } from "lucide-react";
+import useToast from "../../pages/Toast/useToast";
+
+
 
 // --- Types ---
 type OrderItem = {
@@ -61,29 +65,56 @@ export default function AdminOrderList() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null); // To disable select during update
+  const [open, setOpen] = useState<string | null>(null);
+  const { addToast, ToastContainer } = useToast();
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await g("/api/admin/orders");
-        // Ensure items is an array for all orders, default to empty array if missing
-        const processedData = data.map((order: Order) => ({
-          ...order,
-          items: order.items || [],
-        }));
-        const sortedData = processedData.sort((a: Order, b: Order) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setOrders(sortedData);
-      } catch (err: any) {
-        console.error("API Fetch Error:", err);
-        setError(err.message || "An unknown error occurred while fetching orders.");
-      } finally {
-        setLoading(false);
-      }
-    };
+
     fetchOrders();
   }, []);
+  const fetchOrders = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await g("/api/admin/orders");
+      // Ensure items is an array for all orders, default to empty array if missing
+      const processedData = data.map((order: Order) => ({
+        ...order,
+        items: order.items || [],
+      }));
+      const sortedData = processedData.sort((a: Order, b: Order) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setOrders(sortedData);
+    } catch (err: any) {
+      console.error("API Fetch Error:", err);
+      setError(err.message || "An unknown error occurred while fetching orders.");
+    } finally {
+      setLoading(false);
+    }
+  };
+ const deleteorder = async (orderId: string) => {
+  try {
+    setLoading(true);
+    setError(null);
+    setIsUpdatingStatus(orderId); // Mark which order is being deleted
+
+    // Send DELETE request
+    await j(`/api/admin/orders/${orderId}`, "DELETE");
+
+    // Refresh orders after successful deletion
+    await fetchOrders();
+
+    addToast(`Order ${orderId} deleted successfully.`);
+  } catch (err) {
+    console.error("Failed to delete order:", err);
+    setError("Failed to delete order. Please try again.");
+    addToast(`Failed to delete order ${orderId}. Please try again.`);
+  } finally {
+    // Reset states
+    setIsUpdatingStatus(null);
+    setLoading(false);
+  }
+};
+
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     // We can safely cast newStatus here as it comes from a select populated by STATUS_OPTIONS
@@ -233,7 +264,7 @@ export default function AdminOrderList() {
         <table className="min-w-full text-left text-gray-700 table-auto text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr className="text-gray-600 uppercase font-semibold text-xs tracking-wider">
-              {(['created_at', 'order_id', 'customer_name', 'items', 'customer_address', 'total', 'status', 'order_pdf'] as const).map((key) => {
+              {(['created_at', 'order_id', 'customer_name', 'items', 'customer_address', 'total', 'status', 'order_pdf', "action"] as const).map((key) => {
                 let label = key.replace(/_/g, ' ');
                 if (key === 'created_at') label = 'Order Date';
                 if (key === 'customer_name') label = 'Customer Info';
@@ -242,6 +273,7 @@ export default function AdminOrderList() {
                 if (key === 'items') label = 'Order Items';
                 if (key === 'total') label = 'Total Amount';
                 if (key === 'status') label = 'Status'; // Added for clarity
+                if (key === 'action') label = 'Action';
 
                 const isSortable = ['created_at', 'order_id', 'customer_name', 'total', 'status'].includes(key); // Added 'status'
                 return (
@@ -342,6 +374,36 @@ export default function AdminOrderList() {
                       <span className="text-gray-400 text-xs">N/A</span>
                     )}
                   </td>
+                  <td className="relative text-center">
+                    <button
+                      onClick={() => setOpen(prev => (prev === order.order_id ? null : order.order_id))}
+                      className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition"
+                    >
+                      <MoreVertical className="w-5 h-5 text-gray-600" />
+                    </button>
+
+                    {open === order.order_id && (
+                      <div
+                        className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 
+      rounded-lg shadow-lg z-10 flex flex-col py-2 animate-fade-in"
+                      >
+                        <button
+                          className="flex items-center justify-start gap-2 px-3 py-1.5 text-sm 
+        text-blue-600 hover:bg-blue-50 transition"
+                        >
+                          <Edit className="w-4 h-4" /> Edit
+                        </button>
+                        <button
+                          onClick={() => deleteorder(order.order_id)}
+                          className="flex items-center justify-start gap-2 px-3 py-1.5 text-sm 
+        text-red-600 hover:bg-red-50 transition"
+                        >
+                          <Trash2 className="w-4 h-4" /> Delete
+                        </button>
+                      </div>
+                    )}
+                  </td>
+
                 </tr>
               );
             })}
@@ -476,6 +538,7 @@ export default function AdminOrderList() {
           );
         })}
       </div>
+              <ToastContainer />
     </div>
   );
 }

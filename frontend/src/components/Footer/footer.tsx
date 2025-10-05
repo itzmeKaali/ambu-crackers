@@ -8,7 +8,7 @@ function Footer() {
 
       {/* Footer Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-16">
-        
+
         {/* Brand & About */}
         <div className="flex flex-col space-y-4 col-span-1 lg:col-span-1">
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-red-600">AmbuCrackers</h2>
@@ -35,8 +35,7 @@ function Footer() {
             <div className="flex items-center gap-3 text-gray-700 text-sm">
               <FaEnvelope className="text-red-600 w-5 h-5" />
               <a href="mailto:ambucrackers@gmail.com" className="hover:text-red-600 transition">
-                contact@ambucrackers.com
-              </a>
+                ambucrackers@gmail.com              </a>
             </div>
           </div>
         </div>
