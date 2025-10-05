@@ -7,6 +7,7 @@ export type Product = {
 	image_url?: string;
 	category?: string;
 	is_active: boolean;
+	sequence_number?: number;
 };
 
 export type CartItem = {
